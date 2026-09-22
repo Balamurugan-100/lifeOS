@@ -1,0 +1,27 @@
+# Dart / Flutter
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Generated drift code
+*.g.dart
+packages/*/lib/**/*.g.dart
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+*.swp
+*.tmp
+
+# Logs & env
+*.log
+.env*
