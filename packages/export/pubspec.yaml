@@ -1,0 +1,27 @@
+name: lifeos_export
+description: LifeOS one-tap portable export - full JSON envelope plus share-sheet delivery.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  lifeos_core:
+    path: ../../core
+  lifeos_habits:
+    path: ../domains/habits
+  lifeos_storage:
+    path: ../../storage
+  lifeos_tasks:
+    path: ../domains/tasks
+  path: ^1.8.0
+  path_provider: ^2.0.0
+  share_plus: ^10.0.0
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
+  flutter_test:
+    sdk: flutter
