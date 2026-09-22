@@ -1,0 +1,37 @@
+name: lifeos_app
+description: "LifeOS - a mobile-first personal operating system."
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  drift: ^2.0.0
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.0.0
+  lifeos_core:
+    path: ../packages/core
+  lifeos_export:
+    path: ../packages/export
+  lifeos_habits:
+    path: ../packages/domains/habits
+  lifeos_storage:
+    path: ../packages/storage
+  lifeos_tasks:
+    path: ../packages/domains/tasks
+  path: ^1.8.0
+  path_provider: ^2.0.0
+  shared_preferences: ^2.0.0
+  sqlite3_flutter_libs: ^0.5.0
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
