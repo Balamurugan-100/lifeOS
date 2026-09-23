@@ -37,6 +37,7 @@ void main() {
 
       final doneToday = await repository.add('Done today');
       await repository.setStatus(doneToday.id, TaskStatus.completed);
+      await backdate(doneToday.id, DateTime(2026, 9, 22, 12, 30));
 
       final doneBefore = await repository.add('Done before');
       await repository.setStatus(doneBefore.id, TaskStatus.completed);
@@ -107,6 +108,7 @@ void main() {
       expect(summary.counts['completedToday'], 0);
 
       await repository.setStatus(task.id, TaskStatus.completed);
+      await backdate(task.id, DateTime(2026, 9, 22, 12, 30));
 
       summary = await builder.build(today: today);
       expect(summary.counts['outstanding'], 0);

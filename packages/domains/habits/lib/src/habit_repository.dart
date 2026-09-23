@@ -126,6 +126,20 @@ class HabitRepository {
     return [for (final row in rows) calendarDate(row.date)];
   }
 
+  /// Every recorded entry across all habits, deterministic order
+  /// (habit, then date, then creation time). Used for the full export
+  /// envelope (export-format-contract.md: completeness).
+  Future<List<HabitEntry>> allEntries() async {
+    final rows = await (_db.select(_db.habitEntries)
+          ..orderBy([
+            (t) => OrderingTerm.asc(t.habitId),
+            (t) => OrderingTerm.asc(t.date),
+            (t) => OrderingTerm.asc(t.createdAt),
+          ]))
+        .get();
+    return rows;
+  }
+
   Habit _toHabit(dynamic row) => Habit(
         id: row.id as String,
         name: row.name as String,

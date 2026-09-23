@@ -10,11 +10,11 @@ dependencies:
   flutter:
     sdk: flutter
   lifeos_core:
-    path: ../../core
+    path: ../core
   lifeos_habits:
     path: ../domains/habits
   lifeos_storage:
-    path: ../../storage
+    path: ../storage
   lifeos_tasks:
     path: ../domains/tasks
   path: ^1.8.0

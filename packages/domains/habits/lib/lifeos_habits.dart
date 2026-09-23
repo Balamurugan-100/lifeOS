@@ -6,7 +6,7 @@
 library lifeos_habits;
 
 export 'src/habit.dart';
-export 'src/habit_database.dart' hide Habit, HabitEntry;
+export 'src/habit_database.dart' hide Habit;
 export 'src/habit_repository.dart';
 export 'src/streak.dart';
 export 'src/habit_summary.dart';

@@ -15,7 +15,7 @@ final summariesProvider = FutureProvider<List<DomainSummary>>((ref) async {
 /// Runs a direct home action (e.g. `complete`) through the owning module
 /// (SC-007) and refreshes the overview when the action was consumed.
 Future<bool> performHighlightAction(
-  Ref ref,
+  WidgetRef ref,
   String domainKey,
   HighlightedItem item,
 ) async {
@@ -28,7 +28,7 @@ Future<bool> performHighlightAction(
 }
 
 /// Re-fetch summaries after any mutating flow (used by domain screens).
-Future<void> refreshSummaries(Ref ref) async {
+Future<void> refreshSummaries(WidgetRef ref) async {
   ref.invalidate(summariesProvider);
   await ref.read(summariesProvider.future);
 }

@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show QueryExecutor;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -31,7 +32,9 @@ const _overdueItem = HighlightedItem(
 class _FakeModule extends ModuleDescriptor {
   _FakeModule(this.key, this.name, {this.summaries});
 
+  @override
   final String key;
+  @override
   final String name;
   final List<DomainSummary> Function()? summaries;
   int buildCount = 0;
@@ -40,14 +43,17 @@ class _FakeModule extends ModuleDescriptor {
   @override
   Future<DomainSummary> buildSummary() async {
     buildCount++;
-    return summaries?.call() ??
-        DomainSummary(
-          domainKey: key,
-          displayName: name,
-          counts: const {},
-          highlighted: const [],
-          refreshedAt: DateTime.now().toUtc(),
-        );
+    final provided = summaries?.call() ?? const <DomainSummary>[];
+    if (provided.isEmpty) {
+      return DomainSummary(
+        domainKey: key,
+        displayName: name,
+        counts: const {},
+        highlighted: const [],
+        refreshedAt: DateTime.now().toUtc(),
+      );
+    }
+    return provided.first;
   }
 
   @override
@@ -60,8 +66,10 @@ class _FakeModule extends ModuleDescriptor {
 Widget _app({QueryExecutor? executor, ModuleRegistry? registry, List<DomainSummary>? summaries}) {
   return ProviderScope(
     overrides: [
-      databaseExecutorProvider.overrideWithValue(executor ?? openInMemoryExecutor()),
-      if (registry != null) moduleRegistryProvider.overrideWithValue(registry),
+      databaseExecutorProvider
+          .overrideWith((ref) async => executor ?? openInMemoryExecutor()),
+      if (registry != null)
+        moduleRegistryProvider.overrideWith((ref) async => registry),
       if (summaries != null)
         summariesProvider.overrideWith((ref) async => summaries),
     ],

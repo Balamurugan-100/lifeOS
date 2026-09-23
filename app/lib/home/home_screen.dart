@@ -121,7 +121,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                       summary.domainKey,
                       summary.displayName,
                     ),
-                    onItemComplete: _refresh,
+                    onItemComplete: (_) => _refresh(),
                   ),
               ],
             ),
