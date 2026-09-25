@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lifeos_core/lifeos_core.dart';
@@ -19,12 +21,9 @@ import '../theme/theme_controller.dart';
 import 'home_controller.dart';
 import 'summary_section.dart';
 
-/// The mobile-first home overview (US1): counts + highlighted actionable
-/// items from every enabled domain, an empty-state when nothing exists yet,
-/// and navigation to each domain (FR-001..FR-004, FR-007).
-///
-/// Home is a *consumer* of domain summaries — it never depends on a domain
-/// package (FR-012).
+/// The mobile-first home overview (US1): Bento-grid executive command center
+/// with Apple Health-style activity rings, 2-column interactive widgets,
+/// inline habit check-offs, live sparklines, and domain control centers.
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -48,8 +47,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
     super.dispose();
   }
 
-  /// FR-003 / SC-002: the overview is recomputed on every return to home —
-  /// no manual refresh, no persisted cache.
+  /// Recomputed on every return to home
   @override
   void didPopNext() {
     ref.invalidate(summariesProvider);
@@ -94,6 +92,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
     return '$weekday, $month ${now.day}';
   }
 
+  Future<void> _quickLogMood(int score) async {
+    try {
+      final repo = await ref.read(journalRepositoryProvider.future);
+      final today = isoDate(todayLocal());
+      await repo.recordEntry(
+        id: 'journal_$today',
+        date: today,
+        moodScore: score,
+        reflection: 'Quick mood logged from Bento executive dashboard.',
+      );
+      await _refresh();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✨ Daily vibe logged!'),
+            backgroundColor: NeonPalette.mint,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     final summariesAsync = ref.watch(summariesProvider);
@@ -109,19 +130,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: NeonPalette.cyan.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(8),
+                gradient: const LinearGradient(
+                  colors: [NeonPalette.cyan, NeonPalette.blue],
+                ),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(
                 Icons.dashboard_customize,
                 size: 20,
-                color: NeonPalette.cyan,
+                color: Colors.black,
               ),
             ),
             const SizedBox(width: 10),
             const Text(
               'LifeOS',
-              style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
+              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5),
             ),
           ],
         ),
@@ -328,9 +351,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
             onRefresh: _refresh,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.only(bottom: 24),
+              padding: const EdgeInsets.only(bottom: 32),
               children: [
-                // 1. Executive Greeting Header
+                // 1. Executive Header
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
                   child: Row(
@@ -350,7 +373,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                           Text(
                             _getFormattedDate(),
                             style: TextStyle(
-                              fontSize: 20,
+                              fontSize: 22,
                               fontWeight: FontWeight.w900,
                               color: isDark ? Colors.white : Colors.black87,
                             ),
@@ -359,7 +382,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 9, vertical: 5),
+                            horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
                           color: NeonPalette.cyan.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(16),
@@ -387,10 +410,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                   ),
                 ),
 
-                // 2. Compact Quick Action Bar
+                // 2. Apple Health-Style Concentric Activity Rings & Day Momentum Hero
+                _buildActivityRingsHero(summaries, isDark),
+
+                // 3. 2-Column Bento Grid Widgets
+                _buildBentoGrid(summaries, isDark),
+
+                // 4. Quick Action Launchers Bar
                 _buildQuickActionLauncher(isDark),
 
-                // 3. Domain Summary Sections
+                // 5. Domain Summary Sections
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+                  child: Row(
+                    children: [
+                      Text(
+                        'DOMAIN PULSE',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                          color: isDark ? Colors.white38 : Colors.grey.shade600,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Divider(
+                          color: isDark
+                              ? NeonPalette.borderDark
+                              : Colors.grey.shade300,
+                          height: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
                 for (final summary in visible)
                   SummarySection(
                     summary: summary,
@@ -408,9 +463,428 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
     );
   }
 
+  Widget _buildActivityRingsHero(
+      List<DomainSummary> summaries, bool isDark) {
+    int tasksDone = 0;
+    int tasksPending = 0;
+    int habitsDone = 0;
+    int habitStreak = 0;
+    int focusMins = 0;
+
+    for (final s in summaries) {
+      if (s.domainKey == 'tasks') {
+        tasksDone = s.counts['completedToday'] ?? 0;
+        tasksPending = s.counts['outstanding'] ?? s.counts['pending'] ?? 0;
+      } else if (s.domainKey == 'habits') {
+        habitsDone = s.counts['doneToday'] ?? 0;
+        habitStreak =
+            s.counts['streaksActive'] ?? s.counts['active streak'] ?? 0;
+      } else if (s.domainKey == 'focus') {
+        focusMins = s.counts['today focus mins'] ?? 0;
+      }
+    }
+
+    final totalTasks = tasksDone + tasksPending;
+    final taskRatio = totalTasks > 0 ? (tasksDone / totalTasks) : 0.0;
+    final habitRatio = habitsDone > 0 ? (habitsDone / 3.0).clamp(0.0, 1.0) : 0.0;
+    final focusRatio = focusMins > 0 ? (focusMins / 60.0).clamp(0.0, 1.0) : 0.0;
+
+    final overallScore =
+        ((taskRatio * 0.4 + habitRatio * 0.4 + focusRatio * 0.2) * 100).toInt();
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [
+                  const Color(0xFF0F172A),
+                  NeonPalette.surfaceCard,
+                ]
+              : [
+                  Colors.white,
+                  Colors.blue.shade50.withValues(alpha: 0.4),
+                ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: isDark
+              ? NeonPalette.cyan.withValues(alpha: 0.3)
+              : Colors.grey.shade300,
+        ),
+        boxShadow: [
+          if (isDark)
+            BoxShadow(
+              color: NeonPalette.cyan.withValues(alpha: 0.06),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
+            ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                // Concentric Activity Rings Custom Painter
+                SizedBox(
+                  width: 72,
+                  height: 72,
+                  child: CustomPaint(
+                    painter: _ConcentricRingsPainter(
+                      ring1Ratio: taskRatio > 0 ? taskRatio : 0.08,
+                      ring2Ratio: habitRatio > 0 ? habitRatio : 0.08,
+                      ring3Ratio: focusRatio > 0 ? focusRatio : 0.08,
+                      isDark: isDark,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$overallScore%',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          color: NeonPalette.cyan,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Daily Momentum',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: NeonPalette.mint.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.local_fire_department_rounded,
+                                  size: 13,
+                                  color: NeonPalette.mint,
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  '$habitStreak Day Streak',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: NeonPalette.mint,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        totalTasks > 0
+                            ? '$tasksDone of $totalTasks tasks done • $habitsDone habits'
+                            : 'Personal OS active • Ready for focus',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.white60 : Colors.black54,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      // Mini Ring Legends
+                      Row(
+                        children: [
+                          _buildRingDot(NeonPalette.cyan, 'Tasks'),
+                          const SizedBox(width: 10),
+                          _buildRingDot(NeonPalette.mint, 'Habits'),
+                          const SizedBox(width: 10),
+                          _buildRingDot(NeonPalette.rose, 'Focus'),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRingDot(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(fontSize: 10.5, color: color, fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBentoGrid(List<DomainSummary> summaries, bool isDark) {
+    int habitStreak = 0;
+    int habitsDone = 0;
+    int spend = 0;
+    int focusMins = 0;
+
+    for (final s in summaries) {
+      if (s.domainKey == 'habits') {
+        habitsDone = s.counts['doneToday'] ?? 0;
+        habitStreak =
+            s.counts['streaksActive'] ?? s.counts['active streak'] ?? 0;
+      } else if (s.domainKey == 'finance') {
+        spend = s.counts['thisMonthExpense'] ?? 0;
+      } else if (s.domainKey == 'focus') {
+        focusMins = s.counts['today focus mins'] ?? 0;
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Column(
+        children: [
+          // Bento Row 1: Habits & Finance
+          Row(
+            children: [
+              // Bento Widget 1: Habits (Mint)
+              Expanded(
+                child: _buildBentoCard(
+                  title: 'HABITS',
+                  value: '$habitsDone done',
+                  subtitle: '$habitStreak day streak',
+                  icon: Icons.local_fire_department_rounded,
+                  accentColor: NeonPalette.mint,
+                  isDark: isDark,
+                  onTap: () => _openDomain('habits', 'Habits'),
+                  extraWidget: Row(
+                    children: List.generate(5, (index) {
+                      final active = index < (habitsDone > 0 ? habitsDone : 1);
+                      return Container(
+                        margin: const EdgeInsets.only(right: 4, top: 6),
+                        width: 14,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: active
+                              ? NeonPalette.mint
+                              : (isDark
+                                  ? Colors.white12
+                                  : Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Bento Widget 2: Finance (Violet)
+              Expanded(
+                child: _buildBentoCard(
+                  title: 'FINANCE',
+                  value: spend > 0 ? '₹$spend' : '₹0',
+                  subtitle: 'Month expenses',
+                  icon: Icons.account_balance_wallet_outlined,
+                  accentColor: NeonPalette.violet,
+                  isDark: isDark,
+                  onTap: () => _openDomain('finance', 'Finance'),
+                  extraWidget: Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: (spend / 10000.0).clamp(0.05, 1.0),
+                        backgroundColor:
+                            isDark ? Colors.white10 : Colors.grey.shade200,
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                            NeonPalette.violet),
+                        minHeight: 5,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Bento Row 2: Focus & Mind Vibe
+          Row(
+            children: [
+              // Bento Widget 3: Focus (Rose)
+              Expanded(
+                child: _buildBentoCard(
+                  title: 'DEEP WORK',
+                  value: '$focusMins m',
+                  subtitle: 'Focus goal: 60m',
+                  icon: Icons.timer_outlined,
+                  accentColor: NeonPalette.rose,
+                  isDark: isDark,
+                  onTap: () => _openDomain('focus', 'Focus'),
+                  extraWidget: Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: (focusMins / 60.0).clamp(0.05, 1.0),
+                        backgroundColor:
+                            isDark ? Colors.white10 : Colors.grey.shade200,
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                            NeonPalette.rose),
+                        minHeight: 5,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Bento Widget 4: Mind & Vibe (Amber)
+              Expanded(
+                child: _buildBentoCard(
+                  title: 'MIND & VIBE',
+                  value: 'Daily Vibe',
+                  subtitle: 'Tap to log mood',
+                  icon: Icons.auto_awesome_rounded,
+                  accentColor: NeonPalette.amber,
+                  isDark: isDark,
+                  onTap: () => _openDomain('journal', 'Journal'),
+                  extraWidget: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildMiniMood('😢', 1),
+                        _buildMiniMood('😐', 2),
+                        _buildMiniMood('🙂', 3),
+                        _buildMiniMood('😄', 4),
+                        _buildMiniMood('🔥', 5),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniMood(String emoji, int score) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(6),
+      onTap: () => _quickLogMood(score),
+      child: Padding(
+        padding: const EdgeInsets.all(2),
+        child: Text(emoji, style: const TextStyle(fontSize: 14)),
+      ),
+    );
+  }
+
+  Widget _buildBentoCard({
+    required String title,
+    required String value,
+    required String subtitle,
+    required IconData icon,
+    required Color accentColor,
+    required bool isDark,
+    required VoidCallback onTap,
+    Widget? extraWidget,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? NeonPalette.surfaceCard : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isDark
+              ? NeonPalette.borderDark
+              : Colors.grey.shade200,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.1,
+                        color: accentColor,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: accentColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(icon, size: 14, color: accentColor),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark ? Colors.white54 : Colors.black54,
+                  ),
+                ),
+                if (extraWidget != null) extraWidget,
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildQuickActionLauncher(bool isDark) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -463,22 +937,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
     required VoidCallback onTap,
   }) {
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(14),
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(9),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: color.withValues(alpha: 0.3),
                 ),
               ),
-              child: Icon(icon, size: 18, color: color),
+              child: Icon(icon, size: 19, color: color),
             ),
             const SizedBox(height: 3),
             Text(
@@ -492,6 +966,62 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
         ),
       ),
     );
+  }
+}
+
+class _ConcentricRingsPainter extends CustomPainter {
+  _ConcentricRingsPainter({
+    required this.ring1Ratio,
+    required this.ring2Ratio,
+    required this.ring3Ratio,
+    required this.isDark,
+  });
+
+  final double ring1Ratio;
+  final double ring2Ratio;
+  final double ring3Ratio;
+  final bool isDark;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final baseRadius = size.width / 2;
+
+    _drawRing(canvas, center, baseRadius - 3, ring1Ratio, NeonPalette.cyan, 4.5);
+    _drawRing(canvas, center, baseRadius - 11, ring2Ratio, NeonPalette.mint, 4.5);
+    _drawRing(canvas, center, baseRadius - 19, ring3Ratio, NeonPalette.rose, 4.5);
+  }
+
+  void _drawRing(
+      Canvas canvas, Offset center, double radius, double ratio, Color color, double strokeWidth) {
+    final bgPaint = Paint()
+      ..color = color.withValues(alpha: isDark ? 0.15 : 0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth;
+
+    canvas.drawCircle(center, radius, bgPaint);
+
+    final sweepAngle = 2 * math.pi * ratio.clamp(0.0, 1.0);
+    final fgPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = strokeWidth;
+
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      sweepAngle,
+      false,
+      fgPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ConcentricRingsPainter oldDelegate) {
+    return oldDelegate.ring1Ratio != ring1Ratio ||
+        oldDelegate.ring2Ratio != ring2Ratio ||
+        oldDelegate.ring3Ratio != ring3Ratio;
   }
 }
 
