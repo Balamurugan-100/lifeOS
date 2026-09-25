@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:lifeos_app/app.dart';
 import 'package:lifeos_habits/lifeos_habits.dart';
 import 'package:lifeos_storage/lifeos_storage.dart';
 import 'package:lifeos_tasks/lifeos_tasks.dart';
@@ -27,11 +25,10 @@ void main() {
     });
     await TaskRepository(taskDb).add('Coexist task');
 
-    final daily =
-        await HabitRepository(habitDb).define('Read daily');
+    await HabitRepository(habitDb).define('Read daily');
     await HabitRepository(habitDb).define(
       'Run weekly',
-      schedule: const HabitSchedule.weekly({1, 3, 5}),
+      schedule: HabitSchedule.weekly({1, 3, 5}),
     );
 
     await pumpLifeOSApp(tester, executor: executor);

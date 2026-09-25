@@ -20,6 +20,16 @@ class Tasks extends Table with AuditFields {
   /// Manual ordering index for the task list.
   IntColumn get position => integer()();
 
+  /// 'urgent' | 'high' | 'medium' | 'low'
+  TextColumn get priority =>
+      text().withDefault(const Constant('medium')).named('priority')();
+
+  /// Optional multi-line notes or subtext.
+  TextColumn get notes => text().nullable().named('notes')();
+
+  /// Optional category/tag (e.g. 'Work', 'Personal').
+  TextColumn get category => text().nullable().named('category')();
+
   @override
   Set<Column> get primaryKey => {id};
 }

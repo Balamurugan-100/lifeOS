@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:lifeos_app/app.dart';
 import 'package:lifeos_app/bootstrap/registry.dart';
+import 'package:lifeos_app/home/home_controller.dart';
 import 'package:lifeos_habits/lifeos_habits.dart';
 import 'package:lifeos_storage/lifeos_storage.dart';
 import 'package:lifeos_tasks/lifeos_tasks.dart';

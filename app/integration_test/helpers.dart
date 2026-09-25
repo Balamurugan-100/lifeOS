@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show QueryExecutor;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lifeos_app/app.dart';
@@ -21,8 +22,9 @@ Future<void> pumpLifeOSApp(
     ProviderScope(
       overrides: [
         databaseExecutorProvider
-            .overrideWithValue(executor ?? openInMemoryExecutor()),
-        if (registry != null) moduleRegistryProvider.overrideWithValue(registry),
+            .overrideWith((ref) async => executor ?? openInMemoryExecutor()),
+        if (registry != null)
+          moduleRegistryProvider.overrideWith((ref) async => registry),
       ],
       child: const LifeOSApp(),
     ),
@@ -35,7 +37,9 @@ Future<void> pumpLifeOSApp(
 class FakeModule extends ModuleDescriptor {
   FakeModule(this.key, this.name, this.summaries);
 
+  @override
   final String key;
+  @override
   final String name;
   final List<DomainSummary> Function() summaries;
 

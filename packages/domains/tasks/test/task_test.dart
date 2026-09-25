@@ -111,5 +111,43 @@ void main() {
         expect(task.isOverdue(today), isFalse);
       });
     });
+
+    group('priority, notes, category, and copyWith', () {
+      test('supports priority levels and badges', () {
+        final task = Task(
+          id: newId(),
+          title: 'Urgent Bug',
+          status: TaskStatus.outstanding,
+          dueDate: null,
+          position: 0,
+          priority: TaskPriority.urgent,
+          notes: 'Detailed notes here',
+          category: 'Work',
+          createdAt: DateTime.now().toUtc(),
+          updatedAt: DateTime.now().toUtc(),
+        );
+
+        expect(task.priority, TaskPriority.urgent);
+        expect(task.priority.badge, 'P1');
+        expect(task.priority.label, 'Urgent');
+        expect(task.notes, 'Detailed notes here');
+        expect(task.category, 'Work');
+      });
+
+      test('copyWith updates fields cleanly', () {
+        final task = buildTask(title: 'Original');
+        final updated = task.copyWith(
+          title: 'Modified',
+          priority: TaskPriority.high,
+          notes: 'New notes',
+          category: 'Personal',
+        );
+
+        expect(updated.title, 'Modified');
+        expect(updated.priority, TaskPriority.high);
+        expect(updated.notes, 'New notes');
+        expect(updated.category, 'Personal');
+      });
+    });
   });
 }

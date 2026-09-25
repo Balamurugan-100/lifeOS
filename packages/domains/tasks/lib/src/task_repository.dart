@@ -19,8 +19,17 @@ class TaskRepository {
   /// Adds a task with fresh UUID + UTC audit timestamps and the next free
   /// [Task.position]. [dueDate] is normalized to its calendar date; an empty
   /// (epoch) date is treated as "no due date". Returns the stored task.
-  Future<Task> add(String title, {DateTime? dueDate}) async {
+  Future<Task> add(
+    String title, {
+    DateTime? dueDate,
+    TaskPriority priority = TaskPriority.medium,
+    String? notes,
+    String? category,
+  }) async {
     final normalized = normalizeTaskTitle(title);
+    final trimmedNotes = notes?.trim().isEmpty == true ? null : notes?.trim();
+    final trimmedCategory =
+        category?.trim().isEmpty == true ? null : category?.trim();
     final now = utcNow();
     final id = newId();
     final countExpr = _db.tasks.id.count();
@@ -35,6 +44,9 @@ class TaskRepository {
             status: TaskStatus.outstanding.name,
             dueDate: Value(_normalizeDueDate(dueDate)),
             position: position,
+            priority: Value(priority.name),
+            notes: Value(trimmedNotes),
+            category: Value(trimmedCategory),
             createdAt: now,
             updatedAt: now,
           ),
@@ -46,6 +58,9 @@ class TaskRepository {
       status: TaskStatus.outstanding,
       dueDate: _normalizeDueDate(dueDate),
       position: position,
+      priority: priority,
+      notes: trimmedNotes,
+      category: trimmedCategory,
       createdAt: now,
       updatedAt: now,
     );
@@ -76,6 +91,36 @@ class TaskRepository {
             updatedAt: Value(await _nextUpdatedAt(id)),
           ),
         );
+  }
+
+  /// Comprehensive update for a task with priority, notes, and category.
+  Future<void> updateTask(
+    String id, {
+    String? title,
+    DateTime? dueDate,
+    bool clearDueDate = false,
+    TaskPriority? priority,
+    String? notes,
+    bool clearNotes = false,
+    String? category,
+    bool clearCategory = false,
+  }) async {
+    final companion = TasksCompanion(
+      title: title != null ? Value(normalizeTaskTitle(title)) : const Value.absent(),
+      dueDate: clearDueDate
+          ? const Value(null)
+          : (dueDate != null ? Value(_normalizeDueDate(dueDate)) : const Value.absent()),
+      priority: priority != null ? Value(priority.name) : const Value.absent(),
+      notes: clearNotes
+          ? const Value(null)
+          : (notes != null ? Value(notes.trim().isEmpty ? null : notes.trim()) : const Value.absent()),
+      category: clearCategory
+          ? const Value(null)
+          : (category != null ? Value(category.trim().isEmpty ? null : category.trim()) : const Value.absent()),
+      updatedAt: Value(await _nextUpdatedAt(id)),
+    );
+
+    await (_db.update(_db.tasks)..where((t) => t.id.equals(id))).write(companion);
   }
 
   /// Sets the status, refreshing `updated_at`. Idempotent: writing the status
@@ -143,15 +188,27 @@ class TaskRepository {
     return [for (final row in rows) _toTask(row)];
   }
 
-  Task _toTask(dynamic row) => Task(
-        id: row.id as String,
-        title: row.title as String,
-        status: TaskStatus.values.byName(row.status as String),
-        dueDate: row.dueDate as DateTime?,
-        position: row.position as int,
-        createdAt: (row.createdAt as DateTime).toUtc(),
-        updatedAt: (row.updatedAt as DateTime).toUtc(),
-      );
+  Task _toTask(dynamic row) {
+    TaskPriority priority = TaskPriority.medium;
+    try {
+      if (row.priority != null) {
+        priority = TaskPriority.values.byName(row.priority as String);
+      }
+    } catch (_) {}
+
+    return Task(
+      id: row.id as String,
+      title: row.title as String,
+      status: TaskStatus.values.byName(row.status as String),
+      dueDate: row.dueDate as DateTime?,
+      position: row.position as int,
+      priority: priority,
+      notes: row.notes as String?,
+      category: row.category as String?,
+      createdAt: (row.createdAt as DateTime).toUtc(),
+      updatedAt: (row.updatedAt as DateTime).toUtc(),
+    );
+  }
 
   /// Epoch (millisecondsSinceEpoch == 0) means "no due date" (test contract);
   /// otherwise the local calendar date with any time-of-day stripped.
@@ -170,7 +227,7 @@ class TaskRepository {
         .getSingleOrNull();
     final now = utcNow();
     if (row == null) return now;
-    final current = (row.updatedAt as DateTime).toUtc();
+    final current = row.updatedAt.toUtc();
     final nowSecond = now.millisecondsSinceEpoch ~/ 1000;
     final currentSecond = current.millisecondsSinceEpoch ~/ 1000;
     if (nowSecond > currentSecond) return now;

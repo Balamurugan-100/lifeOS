@@ -30,7 +30,7 @@ void main() {
     final task = await tasks.add('Persisted task',
         dueDate: DateTime(2026, 10, 5));
     final habit =
-        await habits.define('Persisted habit', schedule: const HabitSchedule.weekly({1, 4}));
+        await habits.define('Persisted habit', schedule: HabitSchedule.weekly({1, 4}));
     await habits.record(habit.id, DateTime(2026, 9, 21));
     await habits.record(habit.id, DateTime(2026, 9, 18));
 

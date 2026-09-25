@@ -18,4 +18,6 @@ class HabitDatabase extends _$HabitDatabase {
         onCreate: (m) async => m.createAll(),
         beforeOpen: (details) async {},
       );
+
+  Future<void> ensureTables() async => Migrator(this).createAll();
 }

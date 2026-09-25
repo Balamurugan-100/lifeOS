@@ -10,8 +10,9 @@ void main() {
   late HabitDatabase db;
   late HabitRepository repo;
 
-  setUp(() {
+  setUp(() async {
     db = HabitDatabase(openInMemoryExecutor());
+    await db.ensureTables();
     repo = HabitRepository(db);
   });
 

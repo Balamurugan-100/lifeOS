@@ -27,6 +27,28 @@ String normalizeTaskTitle(String title) {
 /// is allowed at any time (toggling is reversible).
 enum TaskStatus { outstanding, completed }
 
+/// Task priority levels: urgent (P1), high (P2), medium (P3), low (P4).
+enum TaskPriority {
+  urgent,
+  high,
+  medium,
+  low;
+
+  String get label => switch (this) {
+        TaskPriority.urgent => 'Urgent',
+        TaskPriority.high => 'High',
+        TaskPriority.medium => 'Medium',
+        TaskPriority.low => 'Low',
+      };
+
+  String get badge => switch (this) {
+        TaskPriority.urgent => 'P1',
+        TaskPriority.high => 'P2',
+        TaskPriority.medium => 'P3',
+        TaskPriority.low => 'P4',
+      };
+}
+
 /// An immutable task (data-model.md: Task entity).
 class Task {
   Task({
@@ -37,10 +59,12 @@ class Task {
     required this.position,
     required this.createdAt,
     required this.updatedAt,
+    this.priority = TaskPriority.medium,
+    this.notes,
+    this.category,
   }) : title = normalizeTaskTitle(title) {
     if (position < 0) {
-      throw ArgumentError.value(
-          position, 'position', 'must not be negative');
+      throw ArgumentError.value(position, 'position', 'must not be negative');
     }
   }
 
@@ -60,6 +84,15 @@ class Task {
   /// Manual ordering index; the list is sorted by position then `createdAt`
   /// (ties keep insertion order).
   final int position;
+
+  /// Task priority level.
+  final TaskPriority priority;
+
+  /// Optional multi-line notes or sub-details.
+  final String? notes;
+
+  /// Optional category/tag (e.g., Work, Personal, Health, Finance).
+  final String? category;
 
   /// Creation instant, UTC.
   final DateTime createdAt;
@@ -81,8 +114,35 @@ class Task {
     return isBeforeToday(calendarDate(due), calendarDate(today));
   }
 
-  /// A copy with [dueDate] normalized to its calendar date and every field
-  /// carried over — used when a lookup rounds a stored raw value.
+  Task copyWith({
+    String? id,
+    String? title,
+    TaskStatus? status,
+    DateTime? dueDate,
+    bool clearDueDate = false,
+    int? position,
+    TaskPriority? priority,
+    String? notes,
+    bool clearNotes = false,
+    String? category,
+    bool clearCategory = false,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return Task(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      status: status ?? this.status,
+      dueDate: clearDueDate ? null : (dueDate ?? this.dueDate),
+      position: position ?? this.position,
+      priority: priority ?? this.priority,
+      notes: clearNotes ? null : (notes ?? this.notes),
+      category: clearCategory ? null : (category ?? this.category),
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
   @override
   bool operator ==(Object other) =>
       other is Task &&
@@ -91,13 +151,27 @@ class Task {
       other.status == status &&
       other.dueDate == dueDate &&
       other.position == position &&
+      other.priority == priority &&
+      other.notes == notes &&
+      other.category == category &&
       other.createdAt == createdAt &&
       other.updatedAt == updatedAt;
 
   @override
   int get hashCode => Object.hash(
-      id, title, status, dueDate, position, createdAt, updatedAt);
+        id,
+        title,
+        status,
+        dueDate,
+        position,
+        priority,
+        notes,
+        category,
+        createdAt,
+        updatedAt,
+      );
 
   @override
-  String toString() => 'Task($title, $status, pos $position)';
+  String toString() =>
+      'Task($title, $status, priority: $priority, pos: $position)';
 }

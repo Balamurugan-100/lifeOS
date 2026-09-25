@@ -13,10 +13,20 @@ dependencies:
     path: ../core
   lifeos_habits:
     path: ../domains/habits
+  lifeos_finance:
+    path: ../domains/finance
   lifeos_storage:
     path: ../storage
   lifeos_tasks:
     path: ../domains/tasks
+  lifeos_journal:
+    path: ../domains/journal
+  lifeos_focus:
+    path: ../domains/focus
+  lifeos_goals:
+    path: ../domains/goals
+  lifeos_notes:
+    path: ../domains/notes
   path: ^1.8.0
   path_provider: ^2.0.0
   share_plus: ^10.0.0

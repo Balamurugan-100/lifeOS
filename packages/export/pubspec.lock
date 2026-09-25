@@ -215,10 +215,45 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  lifeos_finance:
+    dependency: "direct main"
+    description:
+      path: "../domains/finance"
+      relative: true
+    source: path
+    version: "0.1.0"
+  lifeos_focus:
+    dependency: "direct main"
+    description:
+      path: "../domains/focus"
+      relative: true
+    source: path
+    version: "0.1.0"
+  lifeos_goals:
+    dependency: "direct main"
+    description:
+      path: "../domains/goals"
+      relative: true
+    source: path
+    version: "0.1.0"
   lifeos_habits:
     dependency: "direct main"
     description:
       path: "../domains/habits"
+      relative: true
+    source: path
+    version: "0.1.0"
+  lifeos_journal:
+    dependency: "direct main"
+    description:
+      path: "../domains/journal"
+      relative: true
+    source: path
+    version: "0.1.0"
+  lifeos_notes:
+    dependency: "direct main"
+    description:
+      path: "../domains/notes"
       relative: true
     source: path
     version: "0.1.0"

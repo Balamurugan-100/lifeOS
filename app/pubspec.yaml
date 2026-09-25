@@ -15,16 +15,27 @@ dependencies:
     path: ../packages/core
   lifeos_export:
     path: ../packages/export
+  lifeos_finance:
+    path: ../packages/domains/finance
   lifeos_habits:
     path: ../packages/domains/habits
   lifeos_storage:
     path: ../packages/storage
   lifeos_tasks:
     path: ../packages/domains/tasks
+  lifeos_journal:
+    path: ../packages/domains/journal
+  lifeos_focus:
+    path: ../packages/domains/focus
+  lifeos_goals:
+    path: ../packages/domains/goals
+  lifeos_notes:
+    path: ../packages/domains/notes
   path: ^1.8.0
   path_provider: ^2.0.0
   shared_preferences: ^2.0.0
   sqlite3_flutter_libs: ^0.5.0
+  flutter_markdown: ^0.7.7+1
 
 dev_dependencies:
   flutter_lints: ^4.0.0

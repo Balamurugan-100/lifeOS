@@ -219,4 +219,93 @@ void main() {
       expect(tasks.map((t) => t.id).toList(), [a.id, b.id, c.id]);
     });
   });
+
+  group('priority, notes, category, and updateTask', () {
+    test('add stores priority, notes, and category', () async {
+      final task = await repository.add(
+        'Feature work',
+        priority: TaskPriority.urgent,
+        notes: 'Needs urgent fix',
+        category: 'Work',
+      );
+
+      expect(task.priority, TaskPriority.urgent);
+      expect(task.notes, 'Needs urgent fix');
+      expect(task.category, 'Work');
+
+      final fetched = (await repository.byId(task.id))!;
+      expect(fetched.priority, TaskPriority.urgent);
+      expect(fetched.notes, 'Needs urgent fix');
+      expect(fetched.category, 'Work');
+    });
+
+    test('updateTask modifies fields and refreshes updatedAt', () async {
+      final task = await repository.add('Initial task');
+      await repository.updateTask(
+        task.id,
+        title: 'Updated title',
+        priority: TaskPriority.high,
+        notes: 'Added notes',
+        category: 'Personal',
+      );
+
+      final fetched = (await repository.byId(task.id))!;
+      expect(fetched.title, 'Updated title');
+      expect(fetched.priority, TaskPriority.high);
+      expect(fetched.notes, 'Added notes');
+      expect(fetched.category, 'Personal');
+    });
+
+    test('updateTask can clear notes, category, and due date', () async {
+      final task = await repository.add(
+        'Task to clear',
+        dueDate: DateTime(2026, 10, 1),
+        notes: 'Some notes',
+        category: 'Work',
+      );
+
+      await repository.updateTask(
+        task.id,
+        clearDueDate: true,
+        clearNotes: true,
+        clearCategory: true,
+      );
+
+      final fetched = (await repository.byId(task.id))!;
+      expect(fetched.dueDate, isNull);
+      expect(fetched.notes, isNull);
+      expect(fetched.category, isNull);
+    });
+
+    test('ensureTables adds missing columns to existing older tables', () async {
+      // Simulate an old table created without priority/notes/category
+      final rawExecutor = openInMemoryExecutor();
+      final customDb = TaskDatabase(rawExecutor);
+      // Run custom raw table create without new columns
+      await customDb.customStatement('''
+        CREATE TABLE IF NOT EXISTS old_tasks (
+          id TEXT NOT NULL PRIMARY KEY,
+          title TEXT NOT NULL,
+          status TEXT NOT NULL,
+          due_date INTEGER,
+          position INTEGER NOT NULL,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        );
+      ''');
+      // Running ensureTables on tasks database migrates columns if table was created in old schema
+      await customDb.ensureTables();
+      final repo = TaskRepository(customDb);
+      final added = await repo.add(
+        'Migrated Task',
+        priority: TaskPriority.urgent,
+        notes: 'Seamless migration',
+        category: 'Work',
+      );
+      expect(added.priority, TaskPriority.urgent);
+      expect(added.notes, 'Seamless migration');
+      expect(added.category, 'Work');
+      await customDb.close();
+    });
+  });
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lifeos_core/lifeos_core.dart';
 
+import '../theme/theme_controller.dart';
 import 'highlighted_section.dart';
 
 /// One domain's card on the home overview (T025): name, semantic counts, and
@@ -19,9 +20,39 @@ class SummarySection extends ConsumerWidget {
   final VoidCallback onOpenDomain;
   final void Function(HighlightedItem item) onItemComplete;
 
+  Color _getDomainColor(String domainKey) {
+    return switch (domainKey) {
+      'tasks' => NeonPalette.cyan,
+      'habits' => NeonPalette.mint,
+      'finance' => NeonPalette.violet,
+      'journal' => NeonPalette.amber,
+      'focus' => NeonPalette.rose,
+      'goals' => NeonPalette.blue,
+      'notes' => const Color(0xFF38BDF8),
+      _ => NeonPalette.blue,
+    };
+  }
+
+  IconData _getDomainIcon(String domainKey) {
+    return switch (domainKey) {
+      'tasks' => Icons.checklist_rounded,
+      'habits' => Icons.local_fire_department_rounded,
+      'finance' => Icons.account_balance_wallet_rounded,
+      'journal' => Icons.edit_note_rounded,
+      'focus' => Icons.timer_outlined,
+      'goals' => Icons.flag_rounded,
+      'notes' => Icons.description_outlined,
+      _ => Icons.dashboard_outlined,
+    };
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final accentColor = _getDomainColor(summary.domainKey);
+    final domainIcon = _getDomainIcon(summary.domainKey);
+
     final counts = summary.counts.entries
         .where((entry) => entry.value > 0)
         .toList(growable: false)
@@ -29,54 +60,125 @@ class SummarySection extends ConsumerWidget {
 
     return Card(
       key: Key('summary-${summary.domainKey}'),
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: InkWell(
-                    key: Key('open-${summary.domainKey}'),
-                    onTap: onOpenDomain,
-                    child: Text(
-                      summary.displayName,
-                      style: theme.textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: isDark
+              ? NeonPalette.borderDark
+              : Colors.grey.shade200,
+          width: 1,
+        ),
+      ),
+      color: isDark ? NeonPalette.surfaceCard : Colors.white,
+      clipBehavior: Clip.antiAlias,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            left: BorderSide(
+              color: accentColor.withValues(alpha: 0.9),
+              width: 4,
+            ),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Row
+              InkWell(
+                onTap: onOpenDomain,
+                borderRadius: BorderRadius.circular(12),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: accentColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(domainIcon, size: 18, color: accentColor),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        summary.displayName,
+                        key: Key('open-${summary.domainKey}'),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.2,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.05)
+                            : Colors.grey.shade100,
+                      ),
+                      child: Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 12,
+                        color: isDark ? Colors.white54 : Colors.black54,
+                      ),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  tooltip: 'Open ${summary.displayName}',
-                  icon: const Icon(Icons.arrow_forward_ios, size: 16),
-                  onPressed: onOpenDomain,
+              ),
+
+              // Semantic Counts
+              if (counts.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    for (final entry in counts)
+                      Container(
+                        key: Key('count-${summary.domainKey}-${entry.key}'),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: accentColor.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: accentColor.withValues(alpha: 0.25),
+                          ),
+                        ),
+                        child: Text(
+                          '${entry.value} ${entry.key}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: accentColor,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ],
-            ),
-            if (counts.isNotEmpty)
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  for (final entry in counts)
-                    Chip(
-                      key: Key('count-${summary.domainKey}-${entry.key}'),
-                      label: Text('${entry.value} ${entry.key}'),
-                      visualDensity: VisualDensity.compact,
+
+              // Highlighted Action Items
+              if (summary.highlighted.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                ...summary.highlighted.take(3).map(
+                      (item) => HighlightedItemTile(
+                        summary: summary,
+                        item: item,
+                        accentColor: accentColor,
+                        onOpenDomain: onOpenDomain,
+                        onComplete: () => onItemComplete(item),
+                      ),
                     ),
-                ],
-              ),
-            ...summary.highlighted.take(3).map(
-                  (item) => HighlightedItemTile(
-                    summary: summary,
-                    item: item,
-                    onOpenDomain: onOpenDomain,
-                    onComplete: () => onItemComplete(item),
-                  ),
-                ),
-          ],
+              ],
+            ],
+          ),
         ),
       ),
     );

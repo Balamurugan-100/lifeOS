@@ -26,7 +26,7 @@ void main() {
     // so writing a file "into" it raises a FileSystemException.
     final dir = await Directory.systemTemp.createTemp('lifeos-export-fail');
     addTearDown(() => dir.delete(recursive: true));
-    final unwritable = File('${dir.path}'); // a directory, not a file
+    final unwritable = File(dir.path); // a directory, not a file
 
     expect(
       () => exporter.writeTo(unwritable),

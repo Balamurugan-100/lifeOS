@@ -28,13 +28,13 @@ void main() {
   group('ExportEnvelope completeness (SC-009)', () {
     test('envelope contains every owned record with stable field names', () async {
       final taskA = await tasks.add('Ship LifeOS', dueDate: DateTime(2026, 10, 1));
-      final taskB = await tasks.add('Undated task');
+      await tasks.add('Undated task');
       await tasks.setStatus(taskA.id, TaskStatus.completed);
 
       final daily = await habits.define('Read');
       final weekly = await habits.define(
         'Run',
-        schedule: const HabitSchedule.weekly({1, 3, 5}),
+        schedule: HabitSchedule.weekly({1, 3, 5}),
       );
       await habits.record(daily.id, DateTime(2026, 9, 20));
       await habits.record(daily.id, DateTime(2026, 9, 21));
