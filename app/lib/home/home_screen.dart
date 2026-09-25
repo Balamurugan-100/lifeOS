@@ -12,6 +12,7 @@ import '../navigation/focus_screen.dart';
 import '../navigation/goal_screen.dart';
 import '../navigation/habit_screen.dart';
 import '../navigation/journal_screen.dart';
+import '../navigation/note_editor_screen.dart';
 import '../navigation/notes_screen.dart';
 import '../navigation/task_screen.dart';
 import '../theme/theme_controller.dart';
@@ -327,11 +328,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
             onRefresh: _refresh,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.only(bottom: 32),
+              padding: const EdgeInsets.only(bottom: 24),
               children: [
                 // 1. Executive Greeting Header
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -341,17 +342,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                           Text(
                             _getGreeting(),
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: isDark ? Colors.white60 : Colors.black54,
-                              letterSpacing: 0.5,
                             ),
                           ),
-                          const SizedBox(height: 2),
                           Text(
                             _getFormattedDate(),
                             style: TextStyle(
-                              fontSize: 22,
+                              fontSize: 20,
                               fontWeight: FontWeight.w900,
                               color: isDark ? Colors.white : Colors.black87,
                             ),
@@ -360,26 +359,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
+                            horizontal: 9, vertical: 5),
                         decoration: BoxDecoration(
                           color: NeonPalette.cyan.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(
                             color: NeonPalette.cyan.withValues(alpha: 0.3),
                           ),
                         ),
-                        child: Row(
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: NeonPalette.mint,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            const Text(
+                            Icon(Icons.bolt, size: 13, color: NeonPalette.mint),
+                            SizedBox(width: 4),
+                            Text(
                               'Live Local',
                               style: TextStyle(
                                 fontSize: 11,
@@ -394,40 +387,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                   ),
                 ),
 
-                // 2. Executive Metric Quick Strip (KPI Cards)
-                _buildMetricsRibbon(summaries, isDark),
-
-                // 3. Quick Action Command Hub
+                // 2. Compact Quick Action Bar
                 _buildQuickActionLauncher(isDark),
 
-                // Section Divider
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-                  child: Row(
-                    children: [
-                      Text(
-                        'DOMAIN PULSE',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.2,
-                          color: isDark ? Colors.white38 : Colors.grey.shade600,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Divider(
-                          color: isDark
-                              ? NeonPalette.borderDark
-                              : Colors.grey.shade300,
-                          height: 1,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // 4. Domain Summary Sections
+                // 3. Domain Summary Sections
                 for (final summary in visible)
                   SummarySection(
                     summary: summary,
@@ -445,136 +408,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
     );
   }
 
-  Widget _buildMetricsRibbon(List<DomainSummary> summaries, bool isDark) {
-    int taskCount = 0;
-    int habitStreak = 0;
-    int focusMins = 0;
-    int activeGoals = 0;
-
-    for (final s in summaries) {
-      if (s.domainKey == 'tasks') {
-        taskCount = s.counts['due today'] ?? s.counts['pending'] ?? 0;
-      } else if (s.domainKey == 'habits') {
-        habitStreak = s.counts['active streak'] ?? s.counts['completed'] ?? 0;
-      } else if (s.domainKey == 'focus') {
-        focusMins = s.counts['today focus mins'] ?? 0;
-      } else if (s.domainKey == 'goals') {
-        activeGoals = s.counts['active goals'] ?? 0;
-      }
-    }
-
-    return SizedBox(
-      height: 100,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        children: [
-          _buildMetricCard(
-            label: 'Tasks Focus',
-            value: '$taskCount pending',
-            icon: Icons.checklist_rounded,
-            accentColor: NeonPalette.cyan,
-            isDark: isDark,
-            onTap: () => _openDomain('tasks', 'Tasks'),
-          ),
-          _buildMetricCard(
-            label: 'Habit Momentum',
-            value: '$habitStreak days',
-            icon: Icons.local_fire_department_rounded,
-            accentColor: NeonPalette.mint,
-            isDark: isDark,
-            onTap: () => _openDomain('habits', 'Habits'),
-          ),
-          _buildMetricCard(
-            label: 'Deep Work',
-            value: '$focusMins mins',
-            icon: Icons.timer_outlined,
-            accentColor: NeonPalette.rose,
-            isDark: isDark,
-            onTap: () => _openDomain('focus', 'Focus'),
-          ),
-          _buildMetricCard(
-            label: 'Active OKRs',
-            value: '$activeGoals goals',
-            icon: Icons.flag_rounded,
-            accentColor: NeonPalette.blue,
-            isDark: isDark,
-            onTap: () => _openDomain('goals', 'Goals'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMetricCard({
-    required String label,
-    required String value,
-    required IconData icon,
-    required Color accentColor,
-    required bool isDark,
-    required VoidCallback onTap,
-  }) {
-    return Container(
-      width: 140,
-      margin: const EdgeInsets.only(right: 10),
-      child: Material(
-        color: isDark ? NeonPalette.surfaceCard : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDark
-                    ? NeonPalette.borderDark
-                    : Colors.grey.shade200,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white60 : Colors.black54,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(icon, size: 16, color: accentColor),
-                  ],
-                ),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: accentColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildQuickActionLauncher(bool isDark) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -592,7 +428,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
           ),
           _buildQuickActionButton(
             label: 'Focus',
-            icon: Icons.play_arrow_rounded,
+            icon: Icons.timer_outlined,
             color: NeonPalette.rose,
             onTap: () => _openDomain('focus', 'Focus'),
           ),
@@ -600,7 +436,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
             label: 'Note',
             icon: Icons.edit_document,
             color: const Color(0xFF38BDF8),
-            onTap: () => _openDomain('notes', 'Notes & Docs'),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const NoteEditorScreen(),
+                ),
+              );
+            },
           ),
           _buildQuickActionButton(
             label: 'Journal',
@@ -623,21 +466,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
       borderRadius: BorderRadius.circular(12),
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(9),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: color.withValues(alpha: 0.3),
                 ),
               ),
-              child: Icon(icon, size: 20, color: color),
+              child: Icon(icon, size: 18, color: color),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 3),
             Text(
               label,
               style: const TextStyle(
