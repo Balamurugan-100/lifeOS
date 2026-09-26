@@ -13,8 +13,8 @@ import '../navigation/finance_screen.dart';
 import '../navigation/focus_screen.dart';
 import '../navigation/goal_screen.dart';
 import '../navigation/habit_screen.dart';
+import '../navigation/hub_screen.dart';
 import '../navigation/journal_screen.dart';
-import '../navigation/note_editor_screen.dart';
 import '../navigation/notes_screen.dart';
 import '../navigation/planner_screen.dart';
 import '../navigation/review_screen.dart';
@@ -25,12 +25,12 @@ import '../quick_capture/command_palette_modal.dart';
 import '../security/pin_dialog.dart';
 import '../security/vault_service.dart';
 import '../theme/theme_controller.dart';
+import 'highlighted_section.dart';
 import 'home_controller.dart';
-import 'summary_section.dart';
 
-/// The mobile-first home overview (US1): Bento-grid executive command center
-/// with Apple Health-style activity rings, 2-column interactive widgets,
-/// inline habit check-offs, live sparklines, and domain control centers.
+/// The mobile-first home overview: Clean Bento-grid executive command center
+/// with Bottom Navigation Bar, Apple Health-style activity rings, 2-column
+/// interactive widgets, inline habit check-offs, and zero bottom list clutter.
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -39,6 +39,8 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
+  int _currentTabIndex = 0;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -144,429 +146,232 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
             MediaQuery.of(context).platformBrightness == Brightness.dark);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [NeonPalette.cyan, NeonPalette.blue],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.dashboard_customize,
-                size: 20,
-                color: Colors.black,
-              ),
-            ),
-            const SizedBox(width: 10),
-            const Text(
-              'LifeOS',
-              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            key: const Key('openAnalytics'),
-            tooltip: 'Analytics & Trends',
-            icon: const Icon(Icons.analytics_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const AnalyticsScreen()),
-            ),
-          ),
-          IconButton(
-            key: const Key('toggleThemeButton'),
-            tooltip: isDark ? 'Light Mode' : 'Dark Mode',
-            icon: Icon(isDark
-                ? Icons.light_mode_outlined
-                : Icons.dark_mode_outlined),
-            onPressed: () => ref.read(themeModeProvider.notifier).toggleTheme(),
-          ),
-          IconButton(
-            key: const Key('openExport'),
-            tooltip: 'Export',
-            icon: const Icon(Icons.ios_share),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const ExportScreen()),
-            ),
-          ),
-          IconButton(
-            key: const Key('openSettings'),
-            tooltip: 'Modules',
-            icon: const Icon(Icons.tune),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const RegistrySettingsScreen(),
-              ),
-            ),
-          ),
-        ],
-      ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
+      appBar: _currentTabIndex == 0
+          ? AppBar(
+              title: Row(
                 children: [
-                  const Icon(
-                    Icons.dashboard_customize,
-                    size: 40,
-                    color: NeonPalette.cyan,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'LifeOS',
-                    style:
-                        Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onPrimaryContainer,
-                            ),
-                  ),
-                  Text(
-                    'Your Personal Operating System',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onPrimaryContainer,
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [NeonPalette.cyan, NeonPalette.blue],
+                      ),
+                      borderRadius: BorderRadius.circular(10),
                     ),
+                    child: const Icon(
+                      Icons.dashboard_customize,
+                      size: 20,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text(
+                    'LifeOS',
+                    style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 0.5),
                   ),
                 ],
               ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.checklist, color: NeonPalette.cyan),
-              title: const Text('Tasks'),
-              onTap: () {
-                Navigator.pop(context);
-                _openDomain('tasks', 'Tasks');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.loop, color: NeonPalette.mint),
-              title: const Text('Habits'),
-              onTap: () {
-                Navigator.pop(context);
-                _openDomain('habits', 'Habits');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.account_balance_wallet_outlined,
-                  color: NeonPalette.violet),
-              title: const Text('Finance'),
-              onTap: () {
-                Navigator.pop(context);
-                _openDomain('finance', 'Finance');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.edit_note_rounded,
-                  color: NeonPalette.amber),
-              title: const Text('Journal & Mood'),
-              onTap: () {
-                Navigator.pop(context);
-                _openDomain('journal', 'Journal & Mood');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.timer_outlined, color: NeonPalette.rose),
-              title: const Text('Focus & Pomodoro'),
-              onTap: () {
-                Navigator.pop(context);
-                _openDomain('focus', 'Focus & Pomodoro');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.flag_rounded, color: NeonPalette.blue),
-              title: const Text('Goals & Milestones'),
-              onTap: () {
-                Navigator.pop(context);
-                _openDomain('goals', 'Goals & Milestones');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.description_outlined,
-                  color: Color(0xFF38BDF8)),
-              title: const Text('Notes & Docs'),
-              onTap: () {
-                Navigator.pop(context);
-                _openDomain('notes', 'Notes & Docs');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.military_tech_rounded,
-                  color: NeonPalette.violet),
-              title: const Text('LifeXP & Mastery'),
-              onTap: () {
-                Navigator.pop(context);
-                _openDomain('gamification', 'LifeXP & Mastery');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.wb_sunny_rounded,
-                  color: NeonPalette.amber),
-              title: const Text('Rituals & Routines'),
-              onTap: () {
-                Navigator.pop(context);
-                _openDomain('rituals', 'Rituals & Routines');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.calendar_month_rounded,
-                  color: NeonPalette.cyan),
-              title: const Text('Time Blocking Blueprint'),
-              onTap: () {
-                Navigator.pop(context);
-                _openDomain('planner', 'Time Blocking Blueprint');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.battery_charging_full_rounded,
-                  color: NeonPalette.mint),
-              title: const Text('Sleep & Energy Tracker'),
-              onTap: () {
-                Navigator.pop(context);
-                _openDomain('wellness', 'Sleep & Energy Tracker');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.rate_review_rounded,
-                  color: NeonPalette.violet),
-              title: const Text('Weekly Review & Protocol'),
-              onTap: () {
-                Navigator.pop(context);
-                _openDomain('review', 'Weekly Review & Protocol');
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.lock_outline_rounded,
-                  color: NeonPalette.rose),
-              title: const Text('Vault & Security PIN'),
-              onTap: () async {
-                Navigator.pop(context);
-                final vaultService = ref.read(vaultServiceProvider);
-                final hasPin = await vaultService.hasPin();
-                if (context.mounted) {
-                  await PinDialog.show(
-                    context,
-                    vaultService,
-                    'Vault Settings',
-                    isSettingPin: !hasPin,
-                  );
-                }
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.bar_chart_rounded,
-                  color: NeonPalette.mint),
-              title: const Text('Interactive Analytics'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                      builder: (_) => const AnalyticsScreen()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.ios_share),
-              title: const Text('Export & Backup'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const ExportScreen()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.tune),
-              title: const Text('Modules Settings'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const RegistrySettingsScreen(),
+              actions: [
+                IconButton(
+                  key: const Key('openAnalytics'),
+                  tooltip: 'Analytics & Trends',
+                  icon: const Icon(Icons.analytics_outlined),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(builder: (_) => const AnalyticsScreen()),
                   ),
-                );
-              },
-            ),
+                ),
+                IconButton(
+                  key: const Key('toggleThemeButton'),
+                  tooltip: isDark ? 'Light Mode' : 'Dark Mode',
+                  icon: Icon(isDark
+                      ? Icons.light_mode_outlined
+                      : Icons.dark_mode_outlined),
+                  onPressed: () => ref.read(themeModeProvider.notifier).toggleTheme(),
+                ),
+                IconButton(
+                  key: const Key('openExport'),
+                  tooltip: 'Export',
+                  icon: const Icon(Icons.ios_share),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(builder: (_) => const ExportScreen()),
+                  ),
+                ),
+                IconButton(
+                  key: const Key('openSettings'),
+                  tooltip: 'Modules',
+                  icon: const Icon(Icons.tune),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const RegistrySettingsScreen(),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : null,
+      floatingActionButton: _currentTabIndex == 0
+          ? FloatingActionButton.extended(
+              key: const Key('commandPaletteButton'),
+              onPressed: () => CommandPaletteModal.show(context),
+              icon: const Icon(Icons.bolt, color: Colors.black),
+              label: const Text(
+                'Command',
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+              ),
+              backgroundColor: NeonPalette.cyan,
+            )
+          : null,
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentTabIndex,
+        onDestinationSelected: (index) => setState(() => _currentTabIndex = index),
+        backgroundColor: isDark ? const Color(0xFF0B1120) : Colors.white,
+        indicatorColor: NeonPalette.cyan.withValues(alpha: 0.2),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.dashboard_outlined),
+            selectedIcon: Icon(Icons.dashboard_rounded, color: NeonPalette.cyan),
+            label: 'Today',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.checklist_outlined),
+            selectedIcon: Icon(Icons.checklist_rounded, color: NeonPalette.cyan),
+            label: 'Tasks',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.local_fire_department_outlined),
+            selectedIcon: Icon(Icons.local_fire_department_rounded, color: NeonPalette.mint),
+            label: 'Habits',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            selectedIcon: Icon(Icons.account_balance_wallet_rounded, color: NeonPalette.violet),
+            label: 'Finance',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.apps_outlined),
+            selectedIcon: Icon(Icons.apps_rounded, color: NeonPalette.amber),
+            label: 'Hub',
+          ),
+        ],
+      ),
+      body: _buildCurrentTabBody(summariesAsync, isDark),
+    );
+  }
+
+  Widget _buildCurrentTabBody(AsyncValue<List<DomainSummary>> summariesAsync, bool isDark) {
+    if (_currentTabIndex == 1) {
+      return const TaskScreen();
+    } else if (_currentTabIndex == 2) {
+      return const HabitScreen();
+    } else if (_currentTabIndex == 3) {
+      return const FinanceScreen();
+    } else if (_currentTabIndex == 4) {
+      return const HubScreen();
+    }
+
+    // Tab 0: Clean Bento Executive Overview
+    return summariesAsync.when(
+      loading: () => const Center(
+        child: CircularProgressIndicator(color: NeonPalette.cyan),
+      ),
+      error: (error, _) => Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Could not load your overview: $error'),
+            const SizedBox(height: 8),
+            FilledButton(onPressed: _refresh, child: const Text('Retry')),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        key: const Key('commandPaletteButton'),
-        onPressed: () => CommandPaletteModal.show(context),
-        icon: const Icon(Icons.bolt, color: Colors.black),
-        label: const Text(
-          'Command',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
-        ),
-        backgroundColor: NeonPalette.cyan,
-      ),
-      body: summariesAsync.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: NeonPalette.cyan),
-        ),
-        error: (error, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Could not load your overview: $error'),
-              const SizedBox(height: 8),
-              FilledButton(onPressed: _refresh, child: const Text('Retry')),
-            ],
-          ),
-        ),
-        data: (summaries) {
-          final visible =
-              summaries.where((summary) => !summary.isEmpty).toList();
-          if (visible.isEmpty) {
-            return _EmptyState(
-              onAddTask: () => _openDomain('tasks', 'Tasks'),
-              onAddHabit: () => _openDomain('habits', 'Habits'),
-              onOpenFinance: () => _openDomain('finance', 'Finance'),
-            );
-          }
+      data: (summaries) {
+        final visible = summaries.where((summary) => !summary.isEmpty).toList();
+        if (visible.isEmpty) {
+          return _EmptyState(
+            onAddTask: () => setState(() => _currentTabIndex = 1),
+            onAddHabit: () => setState(() => _currentTabIndex = 2),
+            onOpenFinance: () => setState(() => _currentTabIndex = 3),
+          );
+        }
 
-          return RefreshIndicator(
-            onRefresh: _refresh,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.only(bottom: 32),
-              children: [
-                // 1. Executive Header
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _getGreeting(),
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.white60 : Colors.black54,
-                            ),
+        return RefreshIndicator(
+          onRefresh: _refresh,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 90),
+            children: [
+              // 1. Executive Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _getGreeting(),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white60 : Colors.black54,
                           ),
+                        ),
+                        Text(
+                          _getFormattedDate(),
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: NeonPalette.cyan.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: NeonPalette.cyan.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.bolt, size: 13, color: NeonPalette.mint),
+                          SizedBox(width: 4),
                           Text(
-                            _getFormattedDate(),
+                            'Live Local',
                             style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
-                              color: isDark ? Colors.white : Colors.black87,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: NeonPalette.cyan,
                             ),
                           ),
                         ],
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: NeonPalette.cyan.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: NeonPalette.cyan.withValues(alpha: 0.3),
-                          ),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.bolt, size: 13, color: NeonPalette.mint),
-                            SizedBox(width: 4),
-                            Text(
-                              'Live Local',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: NeonPalette.cyan,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // 2. Apple Health-Style Concentric Activity Rings & Day Momentum Hero
-                _buildActivityRingsHero(summaries, isDark),
-
-                // 3. 2-Column Bento Grid Widgets
-                _buildBentoGrid(summaries, isDark),
-
-                // 4. Quick Action Launchers Bar
-                _buildQuickActionLauncher(isDark),
-
-                // 5. Today's Action Queue & Pulse
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: NeonPalette.cyan.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Icon(Icons.flash_on_rounded, size: 13, color: NeonPalette.cyan),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'TODAY\'S ACTION QUEUE',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.1,
-                          color: isDark ? Colors.white70 : Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Divider(
-                          color: isDark
-                              ? NeonPalette.borderDark.withValues(alpha: 0.7)
-                              : Colors.grey.shade300,
-                          height: 1,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                for (final summary in visible)
-                  SummarySection(
-                    summary: summary,
-                    onOpenDomain: () => _openDomain(
-                      summary.domainKey,
-                      summary.displayName,
                     ),
-                    onItemComplete: (_) => _refresh(),
-                  ),
-              ],
-            ),
-          );
-        },
-      ),
+                  ],
+                ),
+              ),
+
+              // 2. Apple Health-Style Concentric Activity Rings & Day Momentum Hero
+              _buildActivityRingsHero(summaries, isDark),
+
+              // 3. 2-Column Bento Grid Interactive Widgets (Clean, Self-Contained)
+              _buildBentoGrid(summaries, isDark),
+
+              // 4. Quick Action Launchers Bar
+              _buildQuickActionLauncher(isDark),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildActivityRingsHero(
-      List<DomainSummary> summaries, bool isDark) {
+  Widget _buildActivityRingsHero(List<DomainSummary> summaries, bool isDark) {
     int tasksDone = 0;
     int tasksPending = 0;
     int habitsDone = 0;
@@ -579,8 +384,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
         tasksPending = s.counts['outstanding'] ?? s.counts['pending'] ?? 0;
       } else if (s.domainKey == 'habits') {
         habitsDone = s.counts['doneToday'] ?? 0;
-        habitStreak =
-            s.counts['streaksActive'] ?? s.counts['active streak'] ?? 0;
+        habitStreak = s.counts['streaksActive'] ?? s.counts['active streak'] ?? 0;
       } else if (s.domainKey == 'focus') {
         focusMins = s.counts['today focus mins'] ?? 0;
       }
@@ -599,22 +403,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isDark
-              ? [
-                  const Color(0xFF0F172A),
-                  NeonPalette.surfaceCard,
-                ]
-              : [
-                  Colors.white,
-                  Colors.blue.shade50.withValues(alpha: 0.4),
-                ],
+              ? [const Color(0xFF0F172A), NeonPalette.surfaceCard]
+              : [Colors.white, Colors.blue.shade50.withValues(alpha: 0.4)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: isDark
-              ? NeonPalette.cyan.withValues(alpha: 0.3)
-              : Colors.grey.shade300,
+          color: isDark ? NeonPalette.cyan.withValues(alpha: 0.3) : Colors.grey.shade300,
         ),
         boxShadow: [
           if (isDark)
@@ -646,7 +442,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                       child: Text(
                         '$overallScore%',
                         style: const TextStyle(
-                          fontSize: 13,
+                          fontSize: 14,
                           fontWeight: FontWeight.w900,
                           color: NeonPalette.cyan,
                         ),
@@ -660,40 +456,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const Text(
                             'Daily Momentum',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
+                              letterSpacing: 0.2,
                             ),
                           ),
+                          const Spacer(),
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
                               color: NeonPalette.mint.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.local_fire_department_rounded,
-                                  size: 13,
-                                  color: NeonPalette.mint,
-                                ),
-                                const SizedBox(width: 3),
-                                Text(
-                                  '$habitStreak Day Streak',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: NeonPalette.mint,
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              '$habitStreak d streak 🔥',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: NeonPalette.mint,
+                              ),
                             ),
                           ),
                         ],
@@ -753,12 +538,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
     int habitsDone = 0;
     int spend = 0;
     int focusMins = 0;
+    int tasksOutstanding = 0;
+    int tasksOverdue = 0;
+    DomainSummary? tasksSummary;
+    DomainSummary? habitsSummary;
 
     for (final s in summaries) {
-      if (s.domainKey == 'habits') {
+      if (s.domainKey == 'tasks') {
+        tasksSummary = s;
+        tasksOutstanding = s.counts['outstanding'] ?? 0;
+        tasksOverdue = s.counts['overdue'] ?? 0;
+      } else if (s.domainKey == 'habits') {
+        habitsSummary = s;
         habitsDone = s.counts['doneToday'] ?? 0;
-        habitStreak =
-            s.counts['streaksActive'] ?? s.counts['active streak'] ?? 0;
+        habitStreak = s.counts['streaksActive'] ?? s.counts['active streak'] ?? 0;
       } else if (s.domainKey == 'finance') {
         spend = s.counts['thisMonthExpense'] ?? 0;
       } else if (s.domainKey == 'focus') {
@@ -766,18 +559,114 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
       }
     }
 
+    final hasTaskHighlights = tasksSummary != null && tasksSummary.highlighted.isNotEmpty;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Column(
         children: [
-          // Bento Row 1: Habits & Finance
+          // Bento Row 1: Tasks (Cyan) & Habits (Mint)
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Bento Widget 1: Habits (Mint)
+              // Bento Widget 1: Tasks
+              Expanded(
+                child: Container(
+                  key: const Key('summary-tasks'),
+                  decoration: BoxDecoration(
+                    color: isDark ? NeonPalette.surfaceCard : Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: isDark ? NeonPalette.borderDark : Colors.grey.shade200,
+                    ),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(18),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(18),
+                      onTap: () => _openDomain('tasks', 'Tasks'),
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Tasks',
+                                  key: Key('open-tasks'),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 1.1,
+                                    color: NeonPalette.cyan,
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: NeonPalette.cyan.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.checklist_rounded,
+                                    size: 14,
+                                    color: NeonPalette.cyan,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              children: [
+                                Text(
+                                  '$tasksOutstanding outstanding',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (tasksOverdue > 0)
+                                  Text(
+                                    '$tasksOverdue overdue',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: NeonPalette.rose,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            if (hasTaskHighlights) ...[
+                              const SizedBox(height: 8),
+                              for (final item in tasksSummary.highlighted.take(2))
+                                HighlightedItemTile(
+                                  summary: tasksSummary,
+                                  item: item,
+                                  accentColor: NeonPalette.cyan,
+                                  onOpenDomain: () => _openDomain('tasks', 'Tasks'),
+                                  onComplete: _refresh,
+                                ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Bento Widget 2: Habits (Mint)
               Expanded(
                 child: _buildBentoCard(
                   title: 'HABITS',
-                  value: '$habitsDone done',
+                  value: habitsSummary != null && habitsSummary.counts.containsKey('doneToday')
+                      ? '${habitsSummary.counts['doneToday']} doneToday'
+                      : '$habitsDone done',
                   subtitle: '$habitStreak day streak',
                   icon: Icons.local_fire_department_rounded,
                   accentColor: NeonPalette.mint,
@@ -793,9 +682,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                         decoration: BoxDecoration(
                           color: active
                               ? NeonPalette.mint
-                              : (isDark
-                                  ? Colors.white12
-                                  : Colors.grey.shade300),
+                              : (isDark ? Colors.white12 : Colors.grey.shade300),
                           borderRadius: BorderRadius.circular(3),
                         ),
                       );
@@ -803,8 +690,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-              // Bento Widget 2: Finance (Violet)
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Bento Row 2: Finance & Focus
+          Row(
+            children: [
+              // Bento Widget 3: Finance (Violet)
               Expanded(
                 child: _buildBentoCard(
                   title: 'FINANCE',
@@ -820,23 +712,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
                         value: (spend / 10000.0).clamp(0.05, 1.0),
-                        backgroundColor:
-                            isDark ? Colors.white10 : Colors.grey.shade200,
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                            NeonPalette.violet),
+                        backgroundColor: isDark ? Colors.white10 : Colors.grey.shade200,
+                        valueColor: const AlwaysStoppedAnimation<Color>(NeonPalette.violet),
                         minHeight: 5,
                       ),
                     ),
                   ),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // Bento Row 2: Focus & Mind Vibe
-          Row(
-            children: [
-              // Bento Widget 3: Focus (Rose)
+              const SizedBox(width: 12),
+              // Bento Widget 4: Focus (Rose)
               Expanded(
                 child: _buildBentoCard(
                   title: 'DEEP WORK',
@@ -852,43 +737,39 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
                         value: (focusMins / 60.0).clamp(0.05, 1.0),
-                        backgroundColor:
-                            isDark ? Colors.white10 : Colors.grey.shade200,
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                            NeonPalette.rose),
+                        backgroundColor: isDark ? Colors.white10 : Colors.grey.shade200,
+                        valueColor: const AlwaysStoppedAnimation<Color>(NeonPalette.rose),
                         minHeight: 5,
                       ),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-              // Bento Widget 4: Mind & Vibe (Amber)
-              Expanded(
-                child: _buildBentoCard(
-                  title: 'MIND & VIBE',
-                  value: 'Daily Vibe',
-                  subtitle: 'Tap to log mood',
-                  icon: Icons.auto_awesome_rounded,
-                  accentColor: NeonPalette.amber,
-                  isDark: isDark,
-                  onTap: () => _openDomain('journal', 'Journal'),
-                  extraWidget: Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildMiniMood('😢', 1),
-                        _buildMiniMood('😐', 2),
-                        _buildMiniMood('🙂', 3),
-                        _buildMiniMood('😄', 4),
-                        _buildMiniMood('🔥', 5),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
             ],
+          ),
+          const SizedBox(height: 12),
+          // Bento Row 3: Mind & Vibe (Amber)
+          _buildBentoCard(
+            title: 'MIND & VIBE',
+            value: 'Daily Vibe',
+            subtitle: 'Tap an emoji to log reflection',
+            icon: Icons.auto_awesome_rounded,
+            accentColor: NeonPalette.amber,
+            isDark: isDark,
+            onTap: () => _openDomain('journal', 'Journal'),
+            extraWidget: Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildMiniMood('😢', 1),
+                  _buildMiniMood('😐', 2),
+                  _buildMiniMood('🙂', 3),
+                  _buildMiniMood('😄', 4),
+                  _buildMiniMood('🔥', 5),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -897,11 +778,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
 
   Widget _buildMiniMood(String emoji, int score) {
     return InkWell(
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(8),
       onTap: () => _quickLogMood(score),
       child: Padding(
-        padding: const EdgeInsets.all(2),
-        child: Text(emoji, style: const TextStyle(fontSize: 14)),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Text(emoji, style: const TextStyle(fontSize: 18)),
       ),
     );
   }
@@ -921,9 +802,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
         color: isDark ? NeonPalette.surfaceCard : Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isDark
-              ? NeonPalette.borderDark
-              : Colors.grey.shade200,
+          color: isDark ? NeonPalette.borderDark : Colors.grey.shade200,
         ),
       ),
       child: Material(
@@ -950,7 +829,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.all(5),
+                      padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
                         color: accentColor.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(8),
@@ -959,15 +838,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
                   value,
                   style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 2),
                 Text(
                   subtitle,
                   style: TextStyle(
@@ -985,84 +863,158 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
   }
 
   Widget _buildQuickActionLauncher(bool isDark) {
+    final actions = [
+      ('Planner', Icons.calendar_today_rounded, NeonPalette.cyan, () => _openDomain('planner', 'Planner')),
+      ('Rituals', Icons.wb_sunny_rounded, NeonPalette.amber, () => _openDomain('rituals', 'Rituals')),
+      ('Wellness', Icons.battery_charging_full_rounded, NeonPalette.mint, () => _openDomain('wellness', 'Wellness')),
+      ('Review', Icons.rate_review_rounded, NeonPalette.violet, () => _openDomain('review', 'Review')),
+      ('Notes', Icons.description_outlined, const Color(0xFF38BDF8), () => _openDomain('notes', 'Notes')),
+      ('Vault', Icons.lock_outline_rounded, NeonPalette.rose, () async {
+        final vaultService = ref.read(vaultServiceProvider);
+        final hasPin = await vaultService.hasPin();
+        if (mounted) {
+          await PinDialog.show(context, vaultService, 'Vault Settings', isSettingPin: !hasPin);
+        }
+      }),
+    ];
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildQuickActionButton(
-            label: 'Task',
-            icon: Icons.add_task_rounded,
-            color: NeonPalette.cyan,
-            onTap: () => _openDomain('tasks', 'Tasks'),
+          Text(
+            'QUICK LAUNCH',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
+              color: isDark ? Colors.white38 : Colors.grey.shade600,
+            ),
           ),
-          _buildQuickActionButton(
-            label: 'Habit',
-            icon: Icons.loop,
-            color: NeonPalette.mint,
-            onTap: () => _openDomain('habits', 'Habits'),
-          ),
-          _buildQuickActionButton(
-            label: 'Focus',
-            icon: Icons.timer_outlined,
-            color: NeonPalette.rose,
-            onTap: () => _openDomain('focus', 'Focus'),
-          ),
-          _buildQuickActionButton(
-            label: 'Note',
-            icon: Icons.edit_document,
-            color: const Color(0xFF38BDF8),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const NoteEditorScreen(),
-                ),
-              );
-            },
-          ),
-          _buildQuickActionButton(
-            label: 'Journal',
-            icon: Icons.edit_note_rounded,
-            color: NeonPalette.amber,
-            onTap: () => _openDomain('journal', 'Journal'),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final (label, icon, color, onTap) in actions)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: onTap,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E293B) : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isDark ? NeonPalette.borderDark : Colors.grey.shade300,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(icon, size: 14, color: color),
+                            const SizedBox(width: 6),
+                            Text(
+                              label,
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildQuickActionButton({
-    required String label,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(14),
-      onTap: onTap,
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({
+    required this.onAddTask,
+    required this.onAddHabit,
+    required this.onOpenFinance,
+  });
+
+  final VoidCallback onAddTask;
+  final VoidCallback onAddHabit;
+  final VoidCallback onOpenFinance;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        padding: const EdgeInsets.all(32),
         child: Column(
+          key: const Key('emptystate'),
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(14),
+                color: NeonPalette.cyan.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
                 border: Border.all(
-                  color: color.withValues(alpha: 0.3),
+                  color: NeonPalette.cyan.withValues(alpha: 0.3),
+                  width: 2,
                 ),
               ),
-              child: Icon(icon, size: 19, color: color),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
+              child: const Icon(
+                Icons.dashboard_customize,
+                size: 56,
+                color: NeonPalette.cyan,
               ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Your LifeOS is ready',
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w900,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Add tasks, daily habits, and track finances to illuminate your personal executive dashboard.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13.5,
+                color: isDark ? Colors.white60 : Colors.black54,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 28),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              alignment: WrapAlignment.center,
+              children: [
+                FilledButton.icon(
+                  key: const Key('openTasks'),
+                  onPressed: onAddTask,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: NeonPalette.cyan,
+                    foregroundColor: Colors.black,
+                  ),
+                  icon: const Icon(Icons.add_task, size: 18),
+                  label: const Text('Add Task', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+                FilledButton.tonalIcon(
+                  key: const Key('openHabits'),
+                  onPressed: onAddHabit,
+                  icon: const Icon(Icons.loop, size: 18),
+                  label: const Text('Add Habit', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
             ),
           ],
         ),
@@ -1087,115 +1039,40 @@ class _ConcentricRingsPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final baseRadius = size.width / 2;
+    const strokeWidth = 5.0;
 
-    _drawRing(canvas, center, baseRadius - 3, ring1Ratio, NeonPalette.cyan, 4.5);
-    _drawRing(canvas, center, baseRadius - 11, ring2Ratio, NeonPalette.mint, 4.5);
-    _drawRing(canvas, center, baseRadius - 19, ring3Ratio, NeonPalette.rose, 4.5);
-  }
+    void drawRing(double radius, double ratio, Color color) {
+      final bgPaint = Paint()
+        ..color = color.withValues(alpha: isDark ? 0.15 : 0.1)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth;
+      canvas.drawCircle(center, radius, bgPaint);
 
-  void _drawRing(
-      Canvas canvas, Offset center, double radius, double ratio, Color color, double strokeWidth) {
-    final bgPaint = Paint()
-      ..color = color.withValues(alpha: isDark ? 0.15 : 0.2)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = strokeWidth;
+      final fgPaint = Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = strokeWidth;
 
-    canvas.drawCircle(center, radius, bgPaint);
+      final sweepAngle = 2 * math.pi * ratio;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius),
+        -math.pi / 2,
+        sweepAngle,
+        false,
+        fgPaint,
+      );
+    }
 
-    final sweepAngle = 2 * math.pi * ratio.clamp(0.0, 1.0);
-    final fgPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = strokeWidth;
-
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -math.pi / 2,
-      sweepAngle,
-      false,
-      fgPaint,
-    );
+    drawRing(size.width / 2 - 4, ring1Ratio.clamp(0.01, 1.0), NeonPalette.cyan);
+    drawRing(size.width / 2 - 12, ring2Ratio.clamp(0.01, 1.0), NeonPalette.mint);
+    drawRing(size.width / 2 - 20, ring3Ratio.clamp(0.01, 1.0), NeonPalette.rose);
   }
 
   @override
-  bool shouldRepaint(covariant _ConcentricRingsPainter oldDelegate) {
-    return oldDelegate.ring1Ratio != ring1Ratio ||
-        oldDelegate.ring2Ratio != ring2Ratio ||
-        oldDelegate.ring3Ratio != ring3Ratio;
-  }
-}
-
-/// FR-004: when no enabled domain has any data, guide the user into their
-/// first task, habit, or finance account instead of showing an empty list.
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({
-    required this.onAddTask,
-    required this.onAddHabit,
-    required this.onOpenFinance,
-  });
-
-  final VoidCallback onAddTask;
-  final VoidCallback onAddHabit;
-  final VoidCallback onOpenFinance;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      key: const Key('emptystate'),
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.dashboard_customize_outlined,
-              size: 56,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Your LifeOS is ready',
-              style: theme.textTheme.titleLarge,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Start with tasks, habits, or finances — everything stays on this device.',
-              style: theme.textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: [
-                OutlinedButton.icon(
-                  key: const Key('openTasks'),
-                  onPressed: onAddTask,
-                  icon: const Icon(Icons.checklist),
-                  label: const Text('Add a task'),
-                ),
-                FilledButton.icon(
-                  key: const Key('openHabits'),
-                  onPressed: onAddHabit,
-                  icon: const Icon(Icons.loop),
-                  label: const Text('Add a habit'),
-                ),
-                FilledButton.tonalIcon(
-                  key: const Key('openFinance'),
-                  onPressed: onOpenFinance,
-                  icon: const Icon(Icons.account_balance_wallet_outlined),
-                  label: const Text('Track finances'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  bool shouldRepaint(covariant _ConcentricRingsPainter oldDelegate) =>
+      oldDelegate.ring1Ratio != ring1Ratio ||
+      oldDelegate.ring2Ratio != ring2Ratio ||
+      oldDelegate.ring3Ratio != ring3Ratio ||
+      oldDelegate.isDark != isDark;
 }
