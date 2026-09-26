@@ -26,7 +26,16 @@ class _TimeScreenState extends ConsumerState<TimeScreen> {
     final strip = ref.watch(timeWeekStripProvider);
     final breakdown = ref.watch(timeBreakdownProvider(timeWindowDays));
 
-    return ListView(
+    return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        key: const Key('addManualTimeEntry'),
+        onPressed: () => _showAddManualTimeDialog(context),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Log Time'),
+        backgroundColor: LifeOSPalette.teal,
+        foregroundColor: Colors.black,
+      ),
+      body: ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 96),
       children: [
         _WindowToggle(
@@ -64,7 +73,8 @@ class _TimeScreenState extends ConsumerState<TimeScreen> {
         const SizedBox(height: 12),
         _SessionLog(log: ref.watch(timeSessionsLogProvider), scheme: scheme),
       ],
-    );
+    ),
+  );
   }
 
   Future<void> _stopActive() async {
@@ -73,6 +83,155 @@ class _TimeScreenState extends ConsumerState<TimeScreen> {
     await (await ref.read(timeRepositoryProvider.future))
         .stopSession(session.id);
     invalidateTime(ref);
+  }
+
+  Future<void> _showAddManualTimeDialog(BuildContext context) async {
+    final tasksAsync = ref.read(taskListProvider.future);
+    final tasks = await tasksAsync;
+    if (!mounted) return;
+    if (tasks.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add a task first')),
+      );
+      return;
+    }
+
+    String selectedTaskId = tasks.first.id;
+    DateTime startDate = DateTime.now();
+    DateTime endDate = DateTime.now().add(const Duration(hours: 1));
+    String? label;
+    bool isPomodoro = false;
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Log Time'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: selectedTaskId,
+                  decoration: const InputDecoration(labelText: 'Task'),
+                  items: [
+                    for (final task in tasks)
+                      DropdownMenuItem(
+                        value: task.id,
+                        child: Text(task.title, overflow: TextOverflow.ellipsis),
+                      ),
+                  ],
+                  onChanged: (value) => setState(() => selectedTaskId = value!),
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  title: const Text('Start'),
+                  subtitle: Text(
+                    '${startDate.day}/${startDate.month}/${startDate.year} ${startDate.hour.toString().padLeft(2, '0')}:${startDate.minute.toString().padLeft(2, '0')}',
+                  ),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: startDate,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (date != null && mounted) {
+                      final time = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay.fromDateTime(startDate),
+                      );
+                      if (time != null) {
+                        setState(() => startDate = DateTime(
+                          date.year, date.month, date.day,
+                          time.hour, time.minute,
+                        ));
+                      }
+                    }
+                  },
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  title: const Text('End'),
+                  subtitle: Text(
+                    '${endDate.day}/${endDate.month}/${endDate.year} ${endDate.hour.toString().padLeft(2, '0')}:${endDate.minute.toString().padLeft(2, '0')}',
+                  ),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: context,
+                      initialDate: endDate,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (date != null && mounted) {
+                      final time = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay.fromDateTime(endDate),
+                      );
+                      if (time != null) {
+                        setState(() => endDate = DateTime(
+                          date.year, date.month, date.day,
+                          time.hour, time.minute,
+                        ));
+                      }
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  decoration: const InputDecoration(
+                    labelText: 'Label (optional)',
+                    hintText: 'e.g. deep work, meeting',
+                  ),
+                  onChanged: (value) => label = value.trim().isEmpty ? null : value.trim(),
+                ),
+                const SizedBox(height: 16),
+                CheckboxListTile(
+                  title: const Text('Pomodoro'),
+                  value: isPomodoro,
+                  onChanged: (value) => setState(() => isPomodoro = value ?? false),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                if (endDate.isBefore(startDate)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('End must be after start')),
+                  );
+                  return;
+                }
+                Navigator.pop(context);
+                await (await ref.read(timeRepositoryProvider.future))
+                    .addManualSession(
+                      taskId: selectedTaskId,
+                      startedAt: startDate,
+                      endedAt: endDate,
+                      isPomodoro: isPomodoro,
+                      label: label,
+                    );
+                invalidateTime(ref);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Time logged')),
+                  );
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

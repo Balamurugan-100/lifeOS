@@ -103,6 +103,50 @@ class TimeRepository {
     );
   }
 
+  /// Adds a manual time entry with explicit start/end times.
+  ///
+  /// Useful for logging past work (e.g. "worked on X from 2pm–4pm yesterday").
+  /// The session is inserted as completed (not running).
+  Future<TimeSession> addManualSession({
+    required String taskId,
+    required DateTime startedAt,
+    required DateTime endedAt,
+    bool isPomodoro = false,
+    String? label,
+  }) async {
+    final trimmed = label?.trim();
+    final cleanLabel = trimmed == null || trimmed.isEmpty ? null : trimmed;
+    final duration = endedAt.toUtc().difference(startedAt.toUtc()).inSeconds;
+    final now = utcNow();
+    final id = newId();
+
+    await _db.into(_db.timeSessions).insert(
+      TimeSessionsCompanion.insert(
+        id: id,
+        taskId: taskId,
+        startedAt: Value(startedAt.toUtc()),
+        endedAt: Value(endedAt.toUtc()),
+        durationSeconds: Value(duration < 0 ? 0 : duration),
+        isPomodoro: Value(isPomodoro),
+        label: Value(cleanLabel),
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+
+    return TimeSession(
+      id: id,
+      taskId: taskId,
+      startedAt: startedAt.toUtc(),
+      endedAt: endedAt.toUtc(),
+      durationSeconds: duration < 0 ? 0 : duration,
+      isPomodoro: isPomodoro,
+      label: cleanLabel,
+      createdAt: now,
+      updatedAt: now,
+    );
+  }
+
   /// The single running session, or null when nothing is being tracked.
   Future<TimeSession?> activeSession() async {
     final row = await (_db.select(_db.timeSessions)
