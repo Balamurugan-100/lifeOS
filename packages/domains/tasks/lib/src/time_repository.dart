@@ -124,8 +124,8 @@ class TimeRepository {
       TimeSessionsCompanion.insert(
         id: id,
         taskId: taskId,
-        startedAt: Value(startedAt.toUtc()),
-        endedAt: Value(endedAt.toUtc()),
+        startedAt: startedAt.toUtc(),
+        endedAt: endedAt.toUtc(),
         durationSeconds: Value(duration < 0 ? 0 : duration),
         isPomodoro: Value(isPomodoro),
         label: Value(cleanLabel),
