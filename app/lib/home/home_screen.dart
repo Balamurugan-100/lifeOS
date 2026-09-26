@@ -523,25 +523,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                 // 4. Quick Action Launchers Bar
                 _buildQuickActionLauncher(isDark),
 
-                // 5. Domain Summary Sections
+                // 5. Today's Action Queue & Pulse
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
                   child: Row(
                     children: [
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: NeonPalette.cyan.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Icon(Icons.flash_on_rounded, size: 13, color: NeonPalette.cyan),
+                      ),
+                      const SizedBox(width: 8),
                       Text(
-                        'DOMAIN PULSE',
+                        'TODAY\'S ACTION QUEUE',
                         style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.2,
-                          color: isDark ? Colors.white38 : Colors.grey.shade600,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.1,
+                          color: isDark ? Colors.white70 : Colors.black87,
                         ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Divider(
                           color: isDark
-                              ? NeonPalette.borderDark
+                              ? NeonPalette.borderDark.withValues(alpha: 0.7)
                               : Colors.grey.shade300,
                           height: 1,
                         ),

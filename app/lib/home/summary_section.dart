@@ -70,111 +70,107 @@ class SummarySection extends ConsumerWidget {
 
     return Card(
       key: Key('summary-${summary.domainKey}'),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         side: BorderSide(
           color: isDark
-              ? NeonPalette.borderDark
+              ? NeonPalette.borderDark.withValues(alpha: 0.7)
               : Colors.grey.shade200,
           width: 1,
         ),
       ),
-      color: isDark ? NeonPalette.surfaceCard : Colors.white,
+      color: isDark ? const Color(0xFF111827) : Colors.white,
       clipBehavior: Clip.antiAlias,
       child: Container(
         decoration: BoxDecoration(
           border: Border(
             left: BorderSide(
-              color: accentColor.withValues(alpha: 0.9),
-              width: 4,
+              color: accentColor,
+              width: 3.5,
             ),
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Row
+              // Header Row with inline counts
               InkWell(
                 onTap: onOpenDomain,
-                borderRadius: BorderRadius.circular(12),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: accentColor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: accentColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(domainIcon, size: 16, color: accentColor),
                       ),
-                      child: Icon(domainIcon, size: 18, color: accentColor),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
+                      const SizedBox(width: 10),
+                      Text(
                         summary.displayName,
                         key: Key('open-${summary.domainKey}'),
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 14.5,
                           fontWeight: FontWeight.w700,
-                          letterSpacing: 0.2,
                           color: isDark ? Colors.white : Colors.black87,
                         ),
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.05)
-                            : Colors.grey.shade100,
+                      const SizedBox(width: 8),
+                      // Inline count pills
+                      if (counts.isNotEmpty)
+                        Expanded(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                for (final entry in counts)
+                                  Container(
+                                    key: Key('count-${summary.domainKey}-${entry.key}'),
+                                    margin: const EdgeInsets.only(right: 6),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 7, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: accentColor.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: accentColor.withValues(alpha: 0.3),
+                                        width: 0.8,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      '${entry.value} ${entry.key}',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: accentColor,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else
+                        const Spacer(),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 18,
+                        color: isDark ? Colors.white38 : Colors.black38,
                       ),
-                      child: Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        size: 12,
-                        color: isDark ? Colors.white54 : Colors.black54,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
 
-              // Semantic Counts
-              if (counts.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: [
-                    for (final entry in counts)
-                      Container(
-                        key: Key('count-${summary.domainKey}-${entry.key}'),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: accentColor.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: accentColor.withValues(alpha: 0.25),
-                          ),
-                        ),
-                        child: Text(
-                          '${entry.value} ${entry.key}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: accentColor,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ],
-
-              // Highlighted Action Items
+              // Highlighted Action Items (if any)
               if (summary.highlighted.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 ...summary.highlighted.take(3).map(
