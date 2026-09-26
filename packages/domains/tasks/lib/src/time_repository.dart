@@ -24,7 +24,6 @@ class TimeRepository {
   Future<TimeSession> startSession(
     String taskId, {
     bool isPomodoro = false,
-    String? label,
   }) async {
     final existing = await activeSession();
     if (existing != null && existing.taskId == taskId) return existing;
@@ -34,15 +33,12 @@ class TimeRepository {
 
     final now = utcNow();
     final id = newId();
-    final trimmed = label?.trim();
-    final cleanLabel = trimmed == null || trimmed.isEmpty ? null : trimmed;
     await _db.into(_db.timeSessions).insert(
           TimeSessionsCompanion.insert(
             id: id,
             taskId: taskId,
             startedAt: now,
             isPomodoro: Value(isPomodoro),
-            label: Value(cleanLabel),
             createdAt: now,
             updatedAt: now,
           ),
@@ -54,7 +50,6 @@ class TimeRepository {
       startedAt: now,
       durationSeconds: 0,
       isPomodoro: isPomodoro,
-      label: cleanLabel,
       createdAt: now,
       updatedAt: now,
     );
@@ -112,10 +107,7 @@ class TimeRepository {
     required DateTime startedAt,
     required DateTime endedAt,
     bool isPomodoro = false,
-    String? label,
   }) async {
-    final trimmed = label?.trim();
-    final cleanLabel = trimmed == null || trimmed.isEmpty ? null : trimmed;
     final duration = endedAt.toUtc().difference(startedAt.toUtc()).inSeconds;
     final now = utcNow();
     final id = newId();
@@ -128,7 +120,6 @@ class TimeRepository {
         endedAt: Value(endedAt.toUtc()),
         durationSeconds: Value(duration < 0 ? 0 : duration),
         isPomodoro: Value(isPomodoro),
-        label: Value(cleanLabel),
         createdAt: now,
         updatedAt: now,
       ),
@@ -141,7 +132,6 @@ class TimeRepository {
       endedAt: endedAt.toUtc(),
       durationSeconds: duration < 0 ? 0 : duration,
       isPomodoro: isPomodoro,
-      label: cleanLabel,
       createdAt: now,
       updatedAt: now,
     );
@@ -390,7 +380,6 @@ class TimeRepository {
       endedAt: endedAt ?? (row.endedAt as DateTime?)?.toUtc(),
       durationSeconds: durationSeconds ?? (row.durationSeconds as int),
       isPomodoro: (row.isPomodoro as bool),
-      label: row.label as String?,
       createdAt: (row.createdAt as DateTime).toUtc(),
       updatedAt: (row.updatedAt as DateTime).toUtc(),
       deletedAt: (row.deletedAt as DateTime?)?.toUtc(),

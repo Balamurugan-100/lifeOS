@@ -128,16 +128,11 @@ class _CommandPaletteModalState extends ConsumerState<CommandPaletteModal> {
         final timeRepo = await ref.read(timeRepositoryProvider.future);
         final asPomodoro = RegExp(r'[@#](pomo|pomodoro)\b', caseSensitive: false)
             .hasMatch(text);
-        final cleanLabel = text
-            .replaceAll(RegExp(r'[@#](pomo|pomodoro)\b', caseSensitive: false), '')
-            .replaceAll(RegExp(r'[@#]([a-zA-Z0-9_\-]+)'), '')
-            .trim();
         final target = await _resolveTask(taskRepo, text) ??
             await taskRepo.add(const CommandParser().parseTask(text).cleanTitle);
         await timeRepo.startSession(
           target.id,
           isPomodoro: asPomodoro,
-          label: cleanLabel.isEmpty ? null : cleanLabel,
         );
       }
 

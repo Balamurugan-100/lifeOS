@@ -142,6 +142,5 @@ void main() {
     expect(active, isNotNull);
     expect(active!.taskId, existing.id);
     expect(active.isPomodoro, isFalse);
-    expect(active.label, 'polish the changelog');
   });
 }

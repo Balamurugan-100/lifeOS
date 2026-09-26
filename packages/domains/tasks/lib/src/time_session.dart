@@ -15,7 +15,6 @@ class TimeSession {
     this.endedAt,
     this.durationSeconds = 0,
     this.isPomodoro = false,
-    this.label,
     this.deletedAt,
   });
 
@@ -36,9 +35,6 @@ class TimeSession {
 
   /// True when started as a Pomodoro round.
   final bool isPomodoro;
-
-  /// Optional label.
-  final String? label;
 
   /// Creation instant, UTC.
   final DateTime createdAt;
@@ -76,8 +72,6 @@ class TimeSession {
     bool clearEndedAt = false,
     int? durationSeconds,
     bool? isPomodoro,
-    String? label,
-    bool clearLabel = false,
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? deletedAt,
@@ -90,7 +84,6 @@ class TimeSession {
       endedAt: clearEndedAt ? null : (endedAt ?? this.endedAt),
       durationSeconds: durationSeconds ?? this.durationSeconds,
       isPomodoro: isPomodoro ?? this.isPomodoro,
-      label: clearLabel ? null : (label ?? this.label),
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: clearDeletedAt ? null : (deletedAt ?? this.deletedAt),
@@ -106,7 +99,6 @@ class TimeSession {
       other.endedAt == endedAt &&
       other.durationSeconds == durationSeconds &&
       other.isPomodoro == isPomodoro &&
-      other.label == label &&
       other.deletedAt == deletedAt;
 
   @override
@@ -117,7 +109,6 @@ class TimeSession {
         endedAt,
         durationSeconds,
         isPomodoro,
-        label,
         deletedAt,
       );
 

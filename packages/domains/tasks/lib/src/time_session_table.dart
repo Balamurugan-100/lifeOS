@@ -30,8 +30,7 @@ class TimeSessions extends Table with AuditFields {
   BoolColumn get isPomodoro =>
       boolean().withDefault(const Constant(false)).named('is_pomodoro')();
 
-  /// Optional session label.
-  TextColumn get label => text().nullable()();
+  /// Optional session label removed.
 
   @override
   Set<Column> get primaryKey => {id};

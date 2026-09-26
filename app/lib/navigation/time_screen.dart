@@ -99,7 +99,6 @@ class _TimeScreenState extends ConsumerState<TimeScreen> {
     String selectedTaskId = tasks.first.id;
     DateTime startDate = DateTime.now();
     DateTime endDate = DateTime.now().add(const Duration(hours: 1));
-    String? label;
     bool isPomodoro = false;
 
     await showDialog(
@@ -180,14 +179,6 @@ class _TimeScreenState extends ConsumerState<TimeScreen> {
                   },
                 ),
                 const SizedBox(height: 16),
-                TextField(
-                  decoration: const InputDecoration(
-                    labelText: 'Label (optional)',
-                    hintText: 'e.g. deep work, meeting',
-                  ),
-                  onChanged: (value) => label = value.trim().isEmpty ? null : value.trim(),
-                ),
-                const SizedBox(height: 16),
                 CheckboxListTile(
                   title: const Text('Pomodoro'),
                   value: isPomodoro,
@@ -217,7 +208,6 @@ class _TimeScreenState extends ConsumerState<TimeScreen> {
                       startedAt: startDate,
                       endedAt: endDate,
                       isPomodoro: isPomodoro,
-                      label: label,
                     );
                 invalidateTime(ref);
                 if (mounted) {
@@ -458,14 +448,14 @@ class _ActiveTimerCardState extends ConsumerState<_ActiveTimerCard> {
     for (final task in tasks) {
       if (task.id == session.taskId) return task.title;
     }
-    return session.label ?? 'a deleted task';
+    return 'a deleted task';
   }
 
   Future<void> _start(String taskId, {required bool pomodoro}) async {
     setState(() => _starting = true);
     try {
       await (await ref.read(timeRepositoryProvider.future))
-          .startSession(taskId, isPomodoro: pomodoro, label: 'Time tab');
+          .startSession(taskId, isPomodoro: pomodoro);
       invalidateTime(ref);
     } finally {
       if (mounted) setState(() => _starting = false);
@@ -836,7 +826,7 @@ class _SessionRow extends ConsumerWidget {
         color: session.isRunning ? scheme.primary : scheme.onSurfaceVariant,
       ),
       title: Text(
-        session.label ?? 'Tracked session',
+        'Tracked session',
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
       ),
