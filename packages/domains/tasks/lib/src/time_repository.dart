@@ -125,7 +125,7 @@ class TimeRepository {
         id: id,
         taskId: taskId,
         startedAt: startedAt.toUtc(),
-        endedAt: endedAt.toUtc(),
+        endedAt: Value(endedAt.toUtc()),
         durationSeconds: Value(duration < 0 ? 0 : duration),
         isPomodoro: Value(isPomodoro),
         label: Value(cleanLabel),
