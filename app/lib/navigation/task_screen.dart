@@ -860,20 +860,51 @@ class _TaskDialogState extends State<_TaskDialog> {
   }
 
   void _save() {
-    final title = _titleController.text.trim();
-    if (title.isEmpty || title.length > 200) {
+    final rawTitle = _titleController.text.trim();
+    if (rawTitle.isEmpty || rawTitle.length > 200) {
       setState(() => _errorText = 'Title must be 1–200 characters.');
       return;
     }
 
-    final notes = _notesController.text.trim();
+    var title = rawTitle;
+    var dueDate = _dueDate;
+    var priority = _priority;
+    var category = _category;
+    var notes = _notesController.text.trim();
+
+    if (widget.existing == null) {
+      final parsed = const CommandParser().parseTask(rawTitle);
+      if (parsed.dueDate != null && _dueDate == null) {
+        dueDate = parsed.dueDate;
+      }
+      if (parsed.category != null && (_category == null || _category!.isEmpty)) {
+        category = parsed.category;
+      }
+      if (parsed.priority != CommandPriority.medium && _priority == TaskPriority.medium) {
+        priority = switch (parsed.priority) {
+          CommandPriority.urgent => TaskPriority.urgent,
+          CommandPriority.high => TaskPriority.high,
+          CommandPriority.medium => TaskPriority.medium,
+          CommandPriority.low => TaskPriority.low,
+        };
+      }
+      if (parsed.cleanTitle.isNotEmpty) {
+        title = parsed.cleanTitle;
+      }
+      if (parsed.tags.length > 1 && notes.isEmpty) {
+        final extraTags = parsed.tags.where((t) => t != parsed.category?.toLowerCase()).toList();
+        if (extraTags.isNotEmpty) {
+          notes = extraTags.map((t) => '#$t').join(' ');
+        }
+      }
+    }
 
     Navigator.of(context).pop((
       title: title,
-      dueDate: _dueDate,
-      priority: _priority,
+      dueDate: dueDate,
+      priority: priority,
       notes: notes.isEmpty ? null : notes,
-      category: _category,
+      category: category,
     ));
   }
 

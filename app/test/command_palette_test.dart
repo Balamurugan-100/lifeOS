@@ -5,6 +5,7 @@ import 'package:lifeos_app/app.dart';
 import 'package:lifeos_app/quick_capture/command_palette_modal.dart';
 import 'package:lifeos_app/security/vault_service.dart';
 import 'package:lifeos_storage/lifeos_storage.dart';
+import 'package:lifeos_tasks/lifeos_tasks.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -34,9 +35,27 @@ void main() {
     expect(find.text('QUICK COMMAND PALETTE'), findsOneWidget);
     expect(find.text('Task'), findsOneWidget);
 
-    await tester.enterText(find.byType(TextField), 'Finish executive report !high');
+    // Type natural language command
+    await tester.enterText(find.byType(TextField), 'Fix the iOS issue by today @ios !urgent');
+    await tester.pumpAndSettle();
+
+    // Verify live preview badges appear
+    expect(find.text('Due: Today'), findsOneWidget);
+    expect(find.text('@ios'), findsOneWidget);
+    expect(find.text('P1 Urgent'), findsOneWidget);
+    expect(find.text('Title: "Fix the iOS issue"'), findsOneWidget);
+
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
+
+    final container = ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+    final taskRepo = await container.read(taskRepositoryProvider.future);
+    final allTasks = await taskRepo.all();
+    expect(allTasks.length, 1);
+    expect(allTasks.first.title, 'Fix the iOS issue');
+    expect(allTasks.first.category, 'ios');
+    expect(allTasks.first.priority, TaskPriority.urgent);
+    expect(allTasks.first.dueDate, isNotNull);
   });
 
   test('VaultService sets and validates master PIN securely', () async {
