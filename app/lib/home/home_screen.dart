@@ -11,6 +11,7 @@ import '../navigation/domain_placeholder_screen.dart';
 import '../navigation/export_screen.dart';
 import '../navigation/finance_screen.dart';
 import '../navigation/focus_screen.dart';
+import '../navigation/gamification_screen.dart';
 import '../navigation/goal_screen.dart';
 import '../navigation/habit_screen.dart';
 import '../navigation/journal_screen.dart';
@@ -62,6 +63,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
       'focus' => const FocusScreen(),
       'goals' => const GoalScreen(),
       'notes' => const NotesScreen(),
+      'gamification' => const GamificationScreen(),
       'analytics' => const AnalyticsScreen(),
       _ => DomainPlaceholderScreen(domainTitle: displayName),
     };
@@ -149,6 +151,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
           ],
         ),
         actions: [
+          IconButton(
+            key: const Key('openGamification'),
+            tooltip: 'LifeXP & Mastery',
+            icon: const Icon(Icons.military_tech_rounded, color: NeonPalette.amber),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                  builder: (_) => const GamificationScreen()),
+            ),
+          ),
           IconButton(
             key: const Key('openAnalytics'),
             tooltip: 'Analytics & Trends',
@@ -282,6 +293,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
               onTap: () {
                 Navigator.pop(context);
                 _openDomain('notes', 'Notes & Docs');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.military_tech_rounded,
+                  color: NeonPalette.violet),
+              title: const Text('LifeXP & Mastery'),
+              onTap: () {
+                Navigator.pop(context);
+                _openDomain('gamification', 'LifeXP & Mastery');
               },
             ),
             const Divider(),

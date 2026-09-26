@@ -96,6 +96,11 @@ void main() {
   testWidgets(
       'T021: summary cards render from DomainSummary fixtures (FR-001, FR-007)',
       (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     await tester.pumpWidget(_app(summaries: [
       _tasksSummary(highlighted: const [_overdueItem]),
       DomainSummary(
@@ -120,6 +125,11 @@ void main() {
   testWidgets(
       'T022: highlighted complete action runs without leaving home (SC-007)',
       (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     final fake = _FakeModule('tasks', 'Tasks',
         summaries: () => [_tasksSummary(highlighted: const [_overdueItem])]);
     final registry = ModuleRegistry()..register(fake);
@@ -140,6 +150,11 @@ void main() {
 
   testWidgets('T023: home refreshes on return to home (FR-003, SC-002)',
       (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     final fake = _FakeModule('tasks', 'Tasks',
         summaries: () => [_tasksSummary(highlighted: const [_overdueItem])]);
     final registry = ModuleRegistry()..register(fake);

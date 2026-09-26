@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lifeos_finance/lifeos_finance.dart';
 import 'package:lifeos_focus/lifeos_focus.dart';
+import 'package:lifeos_gamification/lifeos_gamification.dart';
 import 'package:lifeos_goals/lifeos_goals.dart';
 import 'package:lifeos_habits/lifeos_habits.dart';
 import 'package:lifeos_journal/lifeos_journal.dart';
@@ -67,6 +68,14 @@ final noteDatabaseProvider = FutureProvider<NoteDatabase>((ref) async {
   return db;
 });
 
+final gamificationDatabaseProvider =
+    FutureProvider<GamificationDatabase>((ref) async {
+  final db =
+      GamificationDatabase(await ref.watch(databaseExecutorProvider.future));
+  await db.ensureTables();
+  return db;
+});
+
 final taskRepositoryProvider = FutureProvider<TaskRepository>((ref) async {
   return TaskRepository(await ref.watch(taskDatabaseProvider.future));
 });
@@ -93,6 +102,12 @@ final goalRepositoryProvider = FutureProvider<GoalRepository>((ref) async {
 
 final notesRepositoryProvider = FutureProvider<NotesRepository>((ref) async {
   return NotesRepository(await ref.watch(noteDatabaseProvider.future));
+});
+
+final gamificationRepositoryProvider =
+    FutureProvider<GamificationRepository>((ref) async {
+  return GamificationRepository(
+      await ref.watch(gamificationDatabaseProvider.future));
 });
 
 /// The LifeOS app shell: one `MaterialApp`, one home, per-domain

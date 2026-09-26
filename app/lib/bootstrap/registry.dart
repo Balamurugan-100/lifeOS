@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lifeos_core/lifeos_core.dart';
 import 'package:lifeos_finance/lifeos_finance.dart';
 import 'package:lifeos_focus/lifeos_focus.dart';
+import 'package:lifeos_gamification/lifeos_gamification.dart';
 import 'package:lifeos_goals/lifeos_goals.dart';
 import 'package:lifeos_habits/lifeos_habits.dart';
 import 'package:lifeos_journal/lifeos_journal.dart';
@@ -26,6 +27,7 @@ Future<ModuleRegistry> buildModuleRegistry({
   required FocusDatabase focusDatabase,
   required GoalDatabase goalDatabase,
   required NoteDatabase noteDatabase,
+  required GamificationDatabase gamificationDatabase,
   required SharedPreferences prefs,
 }) async {
   final registry = ModuleRegistry(
@@ -50,7 +52,8 @@ Future<ModuleRegistry> buildModuleRegistry({
     ..register(JournalModule(journalDatabase))
     ..register(FocusModule(focusDatabase))
     ..register(GoalsModule(goalDatabase))
-    ..register(NotesModule(noteDatabase));
+    ..register(NotesModule(noteDatabase))
+    ..register(GamificationModule(gamificationDatabase));
   await registry.loadState();
   return registry;
 }
@@ -65,6 +68,8 @@ final moduleRegistryProvider = FutureProvider<ModuleRegistry>((ref) async {
   final focusDatabase = await ref.watch(focusDatabaseProvider.future);
   final goalDatabase = await ref.watch(goalDatabaseProvider.future);
   final noteDatabase = await ref.watch(noteDatabaseProvider.future);
+  final gamificationDatabase =
+      await ref.watch(gamificationDatabaseProvider.future);
   final prefs = await SharedPreferences.getInstance();
   return buildModuleRegistry(
     taskDatabase: taskDatabase,
@@ -74,6 +79,7 @@ final moduleRegistryProvider = FutureProvider<ModuleRegistry>((ref) async {
     focusDatabase: focusDatabase,
     goalDatabase: goalDatabase,
     noteDatabase: noteDatabase,
+    gamificationDatabase: gamificationDatabase,
     prefs: prefs,
   );
 });

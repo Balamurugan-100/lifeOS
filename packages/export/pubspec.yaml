@@ -27,6 +27,8 @@ dependencies:
     path: ../domains/goals
   lifeos_notes:
     path: ../domains/notes
+  lifeos_gamification:
+    path: ../domains/gamification
   path: ^1.8.0
   path_provider: ^2.0.0
   share_plus: ^10.0.0

@@ -29,6 +29,7 @@ class SummarySection extends ConsumerWidget {
       'focus' => NeonPalette.rose,
       'goals' => NeonPalette.blue,
       'notes' => const Color(0xFF38BDF8),
+      'gamification' => NeonPalette.violet,
       _ => NeonPalette.blue,
     };
   }
@@ -42,6 +43,7 @@ class SummarySection extends ConsumerWidget {
       'focus' => Icons.timer_outlined,
       'goals' => Icons.flag_rounded,
       'notes' => Icons.description_outlined,
+      'gamification' => Icons.military_tech_rounded,
       _ => Icons.dashboard_outlined,
     };
   }

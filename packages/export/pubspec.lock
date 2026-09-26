@@ -229,6 +229,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  lifeos_gamification:
+    dependency: "direct main"
+    description:
+      path: "../domains/gamification"
+      relative: true
+    source: path
+    version: "0.1.0"
   lifeos_goals:
     dependency: "direct main"
     description:
