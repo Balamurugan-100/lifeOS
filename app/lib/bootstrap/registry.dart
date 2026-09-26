@@ -60,7 +60,6 @@ Future<ModuleRegistry> buildModuleRegistry({
     ..register(FocusModule(focusDatabase))
     ..register(GoalsModule(goalDatabase))
     ..register(NotesModule(noteDatabase))
-    ..register(GamificationModule(gamificationDatabase))
     ..register(RitualsModule(RitualsRepository(ritualsDatabase)))
     ..register(PlannerModule(PlannerRepository(plannerDatabase)))
     ..register(WellnessModule(WellnessRepository(wellnessDatabase)))
