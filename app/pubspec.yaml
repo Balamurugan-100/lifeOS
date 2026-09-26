@@ -33,11 +33,20 @@ dependencies:
     path: ../packages/domains/notes
   lifeos_gamification:
     path: ../packages/domains/gamification
+  lifeos_rituals:
+    path: ../packages/domains/rituals
+  lifeos_planner:
+    path: ../packages/domains/planner
+  lifeos_wellness:
+    path: ../packages/domains/wellness
+  lifeos_review:
+    path: ../packages/domains/review
   path: ^1.8.0
   path_provider: ^2.0.0
   shared_preferences: ^2.0.0
   sqlite3_flutter_libs: ^0.5.0
   flutter_markdown: ^0.7.7+1
+  crypto: ^3.0.0
 
 dev_dependencies:
   flutter_lints: ^4.0.0

@@ -17,7 +17,14 @@ import '../navigation/habit_screen.dart';
 import '../navigation/journal_screen.dart';
 import '../navigation/note_editor_screen.dart';
 import '../navigation/notes_screen.dart';
+import '../navigation/planner_screen.dart';
+import '../navigation/review_screen.dart';
+import '../navigation/rituals_screen.dart';
 import '../navigation/task_screen.dart';
+import '../navigation/wellness_screen.dart';
+import '../quick_capture/command_palette_modal.dart';
+import '../security/pin_dialog.dart';
+import '../security/vault_service.dart';
 import '../theme/theme_controller.dart';
 import 'home_controller.dart';
 import 'summary_section.dart';
@@ -54,7 +61,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
     ref.invalidate(summariesProvider);
   }
 
-  void _openDomain(String key, String displayName) {
+  Future<void> _openDomain(String key, String displayName) async {
+    final vaultService = ref.read(vaultServiceProvider);
+    final isLocked = await vaultService.isDomainLocked(key);
+    if (isLocked && mounted) {
+      final unlocked = await PinDialog.show(context, vaultService, displayName);
+      if (!unlocked) return;
+    }
+
+    if (!mounted) return;
+
     final Widget screen = switch (key) {
       'tasks' => const TaskScreen(),
       'habits' => const HabitScreen(),
@@ -64,6 +80,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
       'goals' => const GoalScreen(),
       'notes' => const NotesScreen(),
       'gamification' => const GamificationScreen(),
+      'rituals' => const RitualsScreen(),
+      'planner' => const PlannerScreen(),
+      'wellness' => const WellnessScreen(),
+      'review' => const ReviewScreen(),
       'analytics' => const AnalyticsScreen(),
       _ => DomainPlaceholderScreen(domainTitle: displayName),
     };
@@ -304,7 +324,61 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
                 _openDomain('gamification', 'LifeXP & Mastery');
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.wb_sunny_rounded,
+                  color: NeonPalette.amber),
+              title: const Text('Rituals & Routines'),
+              onTap: () {
+                Navigator.pop(context);
+                _openDomain('rituals', 'Rituals & Routines');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.calendar_month_rounded,
+                  color: NeonPalette.cyan),
+              title: const Text('Time Blocking Blueprint'),
+              onTap: () {
+                Navigator.pop(context);
+                _openDomain('planner', 'Time Blocking Blueprint');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.battery_charging_full_rounded,
+                  color: NeonPalette.mint),
+              title: const Text('Sleep & Energy Tracker'),
+              onTap: () {
+                Navigator.pop(context);
+                _openDomain('wellness', 'Sleep & Energy Tracker');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.rate_review_rounded,
+                  color: NeonPalette.violet),
+              title: const Text('Weekly Review & Protocol'),
+              onTap: () {
+                Navigator.pop(context);
+                _openDomain('review', 'Weekly Review & Protocol');
+              },
+            ),
             const Divider(),
+            ListTile(
+              leading: const Icon(Icons.lock_outline_rounded,
+                  color: NeonPalette.rose),
+              title: const Text('Vault & Security PIN'),
+              onTap: () async {
+                Navigator.pop(context);
+                final vaultService = ref.read(vaultServiceProvider);
+                final hasPin = await vaultService.hasPin();
+                if (context.mounted) {
+                  await PinDialog.show(
+                    context,
+                    vaultService,
+                    'Vault Settings',
+                    isSettingPin: !hasPin,
+                  );
+                }
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.bar_chart_rounded,
                   color: NeonPalette.mint),
@@ -341,6 +415,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
             ),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        key: const Key('commandPaletteButton'),
+        onPressed: () => CommandPaletteModal.show(context),
+        icon: const Icon(Icons.bolt, color: Colors.black),
+        label: const Text(
+          'Command',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+        ),
+        backgroundColor: NeonPalette.cyan,
       ),
       body: summariesAsync.when(
         loading: () => const Center(

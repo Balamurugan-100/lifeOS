@@ -9,7 +9,11 @@ import 'package:lifeos_goals/lifeos_goals.dart';
 import 'package:lifeos_habits/lifeos_habits.dart';
 import 'package:lifeos_journal/lifeos_journal.dart';
 import 'package:lifeos_notes/lifeos_notes.dart';
+import 'package:lifeos_planner/lifeos_planner.dart';
+import 'package:lifeos_review/lifeos_review.dart';
+import 'package:lifeos_rituals/lifeos_rituals.dart';
 import 'package:lifeos_tasks/lifeos_tasks.dart';
+import 'package:lifeos_wellness/lifeos_wellness.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../app.dart';
@@ -17,8 +21,7 @@ import '../app.dart';
 /// SharedPreferences key holding the JSON map of module key -> enabled.
 const String _enabledStateKey = 'modules.enabled';
 
-/// Builds the app's module registry: Tasks, Habits, Finance, Journal, Focus, Goals, Notes descriptors
-/// with enable/disable state persisted to SharedPreferences (FR-005).
+/// Builds the app's module registry with all enabled modules persisted.
 Future<ModuleRegistry> buildModuleRegistry({
   required TaskDatabase taskDatabase,
   required HabitDatabase habitDatabase,
@@ -28,6 +31,10 @@ Future<ModuleRegistry> buildModuleRegistry({
   required GoalDatabase goalDatabase,
   required NoteDatabase noteDatabase,
   required GamificationDatabase gamificationDatabase,
+  required RitualsDatabase ritualsDatabase,
+  required PlannerDatabase plannerDatabase,
+  required WellnessDatabase wellnessDatabase,
+  required ReviewDatabase reviewDatabase,
   required SharedPreferences prefs,
 }) async {
   final registry = ModuleRegistry(
@@ -53,7 +60,11 @@ Future<ModuleRegistry> buildModuleRegistry({
     ..register(FocusModule(focusDatabase))
     ..register(GoalsModule(goalDatabase))
     ..register(NotesModule(noteDatabase))
-    ..register(GamificationModule(gamificationDatabase));
+    ..register(GamificationModule(gamificationDatabase))
+    ..register(RitualsModule(RitualsRepository(ritualsDatabase)))
+    ..register(PlannerModule(PlannerRepository(plannerDatabase)))
+    ..register(WellnessModule(WellnessRepository(wellnessDatabase)))
+    ..register(ReviewModule(ReviewRepository(reviewDatabase)));
   await registry.loadState();
   return registry;
 }
@@ -70,6 +81,10 @@ final moduleRegistryProvider = FutureProvider<ModuleRegistry>((ref) async {
   final noteDatabase = await ref.watch(noteDatabaseProvider.future);
   final gamificationDatabase =
       await ref.watch(gamificationDatabaseProvider.future);
+  final ritualsDatabase = await ref.watch(ritualsDatabaseProvider.future);
+  final plannerDatabase = await ref.watch(plannerDatabaseProvider.future);
+  final wellnessDatabase = await ref.watch(wellnessDatabaseProvider.future);
+  final reviewDatabase = await ref.watch(reviewDatabaseProvider.future);
   final prefs = await SharedPreferences.getInstance();
   return buildModuleRegistry(
     taskDatabase: taskDatabase,
@@ -80,6 +95,10 @@ final moduleRegistryProvider = FutureProvider<ModuleRegistry>((ref) async {
     goalDatabase: goalDatabase,
     noteDatabase: noteDatabase,
     gamificationDatabase: gamificationDatabase,
+    ritualsDatabase: ritualsDatabase,
+    plannerDatabase: plannerDatabase,
+    wellnessDatabase: wellnessDatabase,
+    reviewDatabase: reviewDatabase,
     prefs: prefs,
   );
 });

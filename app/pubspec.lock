@@ -74,7 +74,7 @@ packages:
     source: hosted
     version: "0.3.5+5"
   crypto:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: crypto
       sha256: c8ea0233063ba03258fbcf2ca4d6dadfefe14f02fab57702265467a19f27fadf
@@ -302,6 +302,27 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  lifeos_planner:
+    dependency: "direct main"
+    description:
+      path: "../packages/domains/planner"
+      relative: true
+    source: path
+    version: "0.1.0"
+  lifeos_review:
+    dependency: "direct main"
+    description:
+      path: "../packages/domains/review"
+      relative: true
+    source: path
+    version: "0.1.0"
+  lifeos_rituals:
+    dependency: "direct main"
+    description:
+      path: "../packages/domains/rituals"
+      relative: true
+    source: path
+    version: "0.1.0"
   lifeos_storage:
     dependency: "direct main"
     description:
@@ -313,6 +334,13 @@ packages:
     dependency: "direct main"
     description:
       path: "../packages/domains/tasks"
+      relative: true
+    source: path
+    version: "0.1.0"
+  lifeos_wellness:
+    dependency: "direct main"
+    description:
+      path: "../packages/domains/wellness"
       relative: true
     source: path
     version: "0.1.0"

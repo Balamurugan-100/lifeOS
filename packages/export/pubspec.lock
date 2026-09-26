@@ -264,6 +264,27 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  lifeos_planner:
+    dependency: "direct main"
+    description:
+      path: "../domains/planner"
+      relative: true
+    source: path
+    version: "0.1.0"
+  lifeos_review:
+    dependency: "direct main"
+    description:
+      path: "../domains/review"
+      relative: true
+    source: path
+    version: "0.1.0"
+  lifeos_rituals:
+    dependency: "direct main"
+    description:
+      path: "../domains/rituals"
+      relative: true
+    source: path
+    version: "0.1.0"
   lifeos_storage:
     dependency: "direct main"
     description:
@@ -275,6 +296,13 @@ packages:
     dependency: "direct main"
     description:
       path: "../domains/tasks"
+      relative: true
+    source: path
+    version: "0.1.0"
+  lifeos_wellness:
+    dependency: "direct main"
+    description:
+      path: "../domains/wellness"
       relative: true
     source: path
     version: "0.1.0"

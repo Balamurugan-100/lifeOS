@@ -8,7 +8,11 @@ import 'package:lifeos_goals/lifeos_goals.dart';
 import 'package:lifeos_habits/lifeos_habits.dart';
 import 'package:lifeos_journal/lifeos_journal.dart';
 import 'package:lifeos_notes/lifeos_notes.dart';
+import 'package:lifeos_planner/lifeos_planner.dart';
+import 'package:lifeos_review/lifeos_review.dart';
+import 'package:lifeos_rituals/lifeos_rituals.dart';
 import 'package:lifeos_tasks/lifeos_tasks.dart';
+import 'package:lifeos_wellness/lifeos_wellness.dart';
 
 import 'bootstrap/database.dart';
 import 'home/home_screen.dart';
@@ -76,6 +80,34 @@ final gamificationDatabaseProvider =
   return db;
 });
 
+final ritualsDatabaseProvider = FutureProvider<RitualsDatabase>((ref) async {
+  final db =
+      RitualsDatabase(await ref.watch(databaseExecutorProvider.future));
+  await db.ensureTables();
+  return db;
+});
+
+final plannerDatabaseProvider = FutureProvider<PlannerDatabase>((ref) async {
+  final db =
+      PlannerDatabase(await ref.watch(databaseExecutorProvider.future));
+  await db.ensureTables();
+  return db;
+});
+
+final wellnessDatabaseProvider = FutureProvider<WellnessDatabase>((ref) async {
+  final db =
+      WellnessDatabase(await ref.watch(databaseExecutorProvider.future));
+  await db.ensureTables();
+  return db;
+});
+
+final reviewDatabaseProvider = FutureProvider<ReviewDatabase>((ref) async {
+  final db =
+      ReviewDatabase(await ref.watch(databaseExecutorProvider.future));
+  await db.ensureTables();
+  return db;
+});
+
 final taskRepositoryProvider = FutureProvider<TaskRepository>((ref) async {
   return TaskRepository(await ref.watch(taskDatabaseProvider.future));
 });
@@ -108,6 +140,26 @@ final gamificationRepositoryProvider =
     FutureProvider<GamificationRepository>((ref) async {
   return GamificationRepository(
       await ref.watch(gamificationDatabaseProvider.future));
+});
+
+final ritualsRepositoryProvider =
+    FutureProvider<RitualsRepository>((ref) async {
+  return RitualsRepository(await ref.watch(ritualsDatabaseProvider.future));
+});
+
+final plannerRepositoryProvider =
+    FutureProvider<PlannerRepository>((ref) async {
+  return PlannerRepository(await ref.watch(plannerDatabaseProvider.future));
+});
+
+final wellnessRepositoryProvider =
+    FutureProvider<WellnessRepository>((ref) async {
+  return WellnessRepository(await ref.watch(wellnessDatabaseProvider.future));
+});
+
+final reviewRepositoryProvider =
+    FutureProvider<ReviewRepository>((ref) async {
+  return ReviewRepository(await ref.watch(reviewDatabaseProvider.future));
 });
 
 /// The LifeOS app shell: one `MaterialApp`, one home, per-domain

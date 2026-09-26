@@ -30,6 +30,10 @@ class SummarySection extends ConsumerWidget {
       'goals' => NeonPalette.blue,
       'notes' => const Color(0xFF38BDF8),
       'gamification' => NeonPalette.violet,
+      'rituals' => NeonPalette.amber,
+      'planner' => NeonPalette.cyan,
+      'wellness' => NeonPalette.mint,
+      'review' => NeonPalette.violet,
       _ => NeonPalette.blue,
     };
   }
@@ -44,6 +48,10 @@ class SummarySection extends ConsumerWidget {
       'goals' => Icons.flag_rounded,
       'notes' => Icons.description_outlined,
       'gamification' => Icons.military_tech_rounded,
+      'rituals' => Icons.wb_sunny_rounded,
+      'planner' => Icons.calendar_month_rounded,
+      'wellness' => Icons.battery_charging_full_rounded,
+      'review' => Icons.rate_review_rounded,
       _ => Icons.dashboard_outlined,
     };
   }
