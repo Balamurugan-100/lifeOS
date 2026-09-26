@@ -252,7 +252,6 @@ class LifeOSExporter {
         'endedAt': session.endedAt?.toUtc().toIso8601String(),
         'durationSeconds': session.durationSeconds,
         'isPomodoro': session.isPomodoro,
-        'label': session.label,
       };
 
   Map<String, dynamic> _habitToJson(Habit habit) => <String, dynamic>{
