@@ -3,11 +3,7 @@ import 'dart:io';
 
 import 'package:lifeos_core/lifeos_core.dart';
 import 'package:lifeos_finance/lifeos_finance.dart';
-import 'package:lifeos_focus/lifeos_focus.dart';
-import 'package:lifeos_goals/lifeos_goals.dart';
 import 'package:lifeos_habits/lifeos_habits.dart';
-import 'package:lifeos_journal/lifeos_journal.dart';
-import 'package:lifeos_notes/lifeos_notes.dart';
 import 'package:lifeos_tasks/lifeos_tasks.dart';
 
 /// Raised when an export cannot be produced or written (T070 edge case).
@@ -21,31 +17,29 @@ class ExportException implements Exception {
 }
 
 /// Builds the portable JSON export envelope and Daily Markdown Digests.
+///
+/// Scoped to the three surviving domains (tasks + tracked time, habits,
+/// finance). Every optional domain is nullable so a partial install still
+/// produces a valid envelope.
 class LifeOSExporter {
   LifeOSExporter({
     required TaskRepository tasks,
     required HabitRepository habits,
+    required TimeRepository time,
     FinanceRepository? finance,
-    JournalRepository? journal,
-    FocusRepository? focus,
-    GoalRepository? goals,
-    NotesRepository? notes,
     this.appVersion = '0.1.0',
   })  : _tasks = tasks,
         _habits = habits,
-        _finance = finance,
-        _journal = journal,
-        _focus = focus,
-        _goals = goals,
-        _notes = notes;
+        _time = time,
+        _finance = finance;
 
   final TaskRepository _tasks;
   final HabitRepository _habits;
+
+  /// Tracked work sessions live in the Tasks domain, so the exporter reads them
+  /// through the time repository rather than a second domain dependency.
+  final TimeRepository _time;
   final FinanceRepository? _finance;
-  final JournalRepository? _journal;
-  final FocusRepository? _focus;
-  final GoalRepository? _goals;
-  final NotesRepository? _notes;
   final String appVersion;
 
   static const int schemaVersion = 1;
@@ -54,10 +48,14 @@ class LifeOSExporter {
     final taskRows = await _tasks.all();
     final habitRows = await _habits.all();
     final entryRows = await _habits.allEntries();
+    final sessions = await _time.allTimeSessions();
+
+    final totals = await _time.totalsByTask();
 
     final domains = <String, dynamic>{
       'tasks': <String, dynamic>{
-        'tasks': [for (final task in taskRows) _taskToJson(task)],
+        'tasks': [for (final task in taskRows) _taskToJson(task, totals[task.id])],
+        'timeSessions': [for (final s in sessions) _sessionToJson(s)],
       },
       'habits': <String, dynamic>{
         'habits': [for (final habit in habitRows) _habitToJson(habit)],
@@ -76,34 +74,6 @@ class LifeOSExporter {
       };
     }
 
-    if (_journal != null) {
-      final entries = await _journal.getAllEntries();
-      domains['journal'] = <String, dynamic>{
-        'entries': [for (final e in entries) e.toJson()],
-      };
-    }
-
-    if (_focus != null) {
-      final sessions = await _focus.getAllSessions();
-      domains['focus'] = <String, dynamic>{
-        'sessions': [for (final s in sessions) s.toJson()],
-      };
-    }
-
-    if (_goals != null) {
-      final allGoals = await _goals.getAllGoals();
-      domains['goals'] = <String, dynamic>{
-        'goals': [for (final g in allGoals) g.toJson()],
-      };
-    }
-
-    if (_notes != null) {
-      final allNotes = await _notes.getAllNotes(includeArchived: true);
-      domains['notes'] = <String, dynamic>{
-        'notes': [for (final n in allNotes) n.toJson()],
-      };
-    }
-
     return <String, dynamic>{
       'schemaVersion': schemaVersion,
       'exportedAt': DateTime.now().toUtc().toIso8601String(),
@@ -117,35 +87,16 @@ class LifeOSExporter {
     final dateKey = isoDate(targetDate);
     final buffer = StringBuffer();
 
-    buffer.writeln('# 📓 LifeOS Daily Digest - $dateKey\n');
+    buffer.writeln('# LifeOS Daily Digest - $dateKey\n');
 
-    // 1. Daily Reflection & Mood
-    if (_journal != null) {
-      final entry = await _journal.getEntryByDate(dateKey);
-      if (entry != null) {
-        buffer.writeln('## 🌅 Daily Reflection & Mood');
-        buffer.writeln('- **Mood:** ${entry.mood.emoji} ${entry.mood.label}');
-        if (entry.gratitude != null && entry.gratitude!.isNotEmpty) {
-          buffer.writeln('- **Gratitude:** ${entry.gratitude}');
-        }
-        if (entry.reflection.isNotEmpty) {
-          buffer.writeln('- **Reflection:**\n  ${entry.reflection}');
-        }
-        if (entry.tags.isNotEmpty) {
-          buffer.writeln('- **Tags:** ${entry.tags.map((t) => '#$t').join(' ')}');
-        }
-        buffer.writeln('');
-      }
-    }
-
-    // 2. Habits Completed Today
+    // 1. Habits completed today
     final habitEntries = await _habits.allEntries();
     final todayHabitsDone = habitEntries
         .where((e) => isoDate(e.date) == dateKey)
         .toList();
     final allHabits = await _habits.all();
 
-    buffer.writeln('## 🔁 Habits Completed (${todayHabitsDone.length})');
+    buffer.writeln('## Habits Completed (${todayHabitsDone.length})');
     if (todayHabitsDone.isEmpty) {
       buffer.writeln('_No habits recorded on this day._\n');
     } else {
@@ -165,10 +116,10 @@ class LifeOSExporter {
       buffer.writeln('');
     }
 
-    // 3. Tasks
+    // 2. Tasks completed
     final tasks = await _tasks.all();
     final doneTasks = tasks.where((t) => t.isCompleted).toList();
-    buffer.writeln('## ✅ Tasks Summary');
+    buffer.writeln('## Tasks Completed (${doneTasks.length})');
     if (doneTasks.isEmpty) {
       buffer.writeln('_No tasks marked complete._\n');
     } else {
@@ -178,62 +129,47 @@ class LifeOSExporter {
       buffer.writeln('');
     }
 
-    // 4. Focus / Deep Work
-    if (_focus != null) {
-      final sessions = await _focus.getAllSessions();
-      final daySessions = sessions
-          .where((s) => isoDate(s.completedAt) == dateKey)
-          .toList();
-      final totalMins = daySessions.fold<int>(
-          0, (sum, s) => sum + s.durationMinutes);
+    // 3. Time tracked — bucketed by the user's local calendar day, matching
+    //    TimeRepository.totalSecondsForDay (a session started at 23:30 local
+    //    belongs to that local day even though it is already "tomorrow" in UTC).
+    final daySessions = (await _time.allTimeSessions())
+        .where((s) => isoDate(s.startedAt.toLocal()) == dateKey)
+        .toList();
+    final totalMins =
+        daySessions.fold<int>(0, (sum, s) => sum + s.durationSeconds) ~/ 60;
+    final taskTitles = {for (final t in tasks) t.id: t.title};
 
-      buffer.writeln('## ⏱️ Focus & Deep Work ($totalMins mins)');
-      if (daySessions.isEmpty) {
-        buffer.writeln('_No focus sessions logged._\n');
-      } else {
-        for (final s in daySessions) {
-          buffer.writeln(
-              '- **${s.taskTitle ?? s.mode.label}**: ${s.durationMinutes} mins');
-        }
-        buffer.writeln('');
+    buffer.writeln('## Time Tracked ($totalMins min)');
+    if (daySessions.isEmpty) {
+      buffer.writeln('_No tracked time on this day._\n');
+    } else {
+      for (final s in daySessions) {
+        final title = taskTitles[s.taskId] ?? 'Unlinked session';
+        final mins = s.durationSeconds ~/ 60;
+        buffer.writeln('- **$title** — $mins min${s.isPomodoro ? ' (pomodoro)' : ''}');
       }
+      buffer.writeln('');
     }
 
-    // 5. Finance Transactions
+    // 4. Finance activity
     if (_finance != null) {
       final txs = await _finance.getTransactions(limit: 1000);
-      final dayTxs =
-          txs.where((t) => isoDate(t.date) == dateKey).toList();
+      final dayTxs = txs.where((t) => isoDate(t.date) == dateKey).toList();
 
-      buffer.writeln('## 💰 Finance Activity (${dayTxs.length} txs)');
+      buffer.writeln('## Finance Activity (${dayTxs.length} txs)');
       if (dayTxs.isEmpty) {
         buffer.writeln('_No transactions on this day._\n');
       } else {
         for (final tx in dayTxs) {
           final sign = tx.type == TransactionType.expense ? '-' : '+';
-          buffer.writeln('- **$sign₹${tx.amount.toStringAsFixed(2)}** • ${tx.note ?? tx.type.name}');
+          buffer.writeln(
+              '- **$sign\u{20B9}${tx.amount.toStringAsFixed(2)}** \u2022 ${tx.note ?? tx.type.name}');
         }
         buffer.writeln('');
       }
     }
 
-    // 6. Notes Created / Modified
-    if (_notes != null) {
-      final notes = await _notes.getAllNotes(includeArchived: true);
-      final dayNotes = notes
-          .where((n) => isoDate(n.updatedAt) == dateKey)
-          .toList();
-
-      if (dayNotes.isNotEmpty) {
-        buffer.writeln('## 📝 Notes Updated (${dayNotes.length})');
-        for (final n in dayNotes) {
-          buffer.writeln('### ${n.title}');
-          buffer.writeln('${n.content}\n');
-        }
-      }
-    }
-
-    buffer.writeln('---\n_Exported from LifeOS Personal Operating System_');
+    buffer.writeln('---\n_Exported from LifeOS_');
     return buffer.toString();
   }
 
@@ -294,14 +230,29 @@ class LifeOSExporter {
         'updatedAt': b.updatedAt.toUtc().toIso8601String(),
       };
 
-  Map<String, dynamic> _taskToJson(Task task) => <String, dynamic>{
+  Map<String, dynamic> _taskToJson(Task task, int? trackedSeconds) =>
+      <String, dynamic>{
         'id': task.id,
         'title': task.title,
         'dueDate': task.dueDate == null ? null : isoDate(task.dueDate!),
         'status': task.status.name,
         'position': task.position,
+        'priority': task.priority.name,
+        'category': task.category,
+        'repeat': task.repeat.name,
+        'trackedSeconds': trackedSeconds ?? 0,
         'createdAt': task.createdAt.toUtc().toIso8601String(),
         'updatedAt': task.updatedAt.toUtc().toIso8601String(),
+      };
+
+  Map<String, dynamic> _sessionToJson(TimeSession session) => <String, dynamic>{
+        'id': session.id,
+        'taskId': session.taskId,
+        'startedAt': session.startedAt.toUtc().toIso8601String(),
+        'endedAt': session.endedAt?.toUtc().toIso8601String(),
+        'durationSeconds': session.durationSeconds,
+        'isPomodoro': session.isPomodoro,
+        'label': session.label,
       };
 
   Map<String, dynamic> _habitToJson(Habit habit) => <String, dynamic>{

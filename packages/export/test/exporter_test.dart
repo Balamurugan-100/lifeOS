@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lifeos_habits/lifeos_habits.dart';
 import 'package:lifeos_storage/lifeos_storage.dart';
@@ -12,12 +13,14 @@ void main() {
   late HabitDatabase habitDb;
   late TaskRepository tasks;
   late HabitRepository habits;
+  late TimeRepository time;
 
   setUp(() async {
     taskDb = TaskDatabase(openInMemoryExecutor());
     habitDb = HabitDatabase(openInMemoryExecutor());
     tasks = TaskRepository(taskDb);
     habits = HabitRepository(habitDb);
+    time = TimeRepository(taskDb);
   });
 
   tearDown(() async {
@@ -40,7 +43,7 @@ void main() {
       await habits.record(daily.id, DateTime(2026, 9, 21));
       await habits.record(weekly.id, DateTime(2026, 9, 21));
 
-      final envelope = await LifeOSExporter(tasks: tasks, habits: habits)
+      final envelope = await LifeOSExporter(tasks: tasks, habits: habits, time: time)
           .buildEnvelope();
 
       expect(envelope['schemaVersion'], 1);
@@ -90,7 +93,7 @@ void main() {
       await tasks.add('Only task');
       await habits.define('Only habit');
 
-      final envelope = await LifeOSExporter(tasks: tasks, habits: habits)
+      final envelope = await LifeOSExporter(tasks: tasks, habits: habits, time: time)
           .buildEnvelope();
       final domains = envelope['domains'] as Map<String, dynamic>;
       expect(
@@ -105,7 +108,7 @@ void main() {
 
     test('empty domains are included with empty payloads (readable, tolerant)',
         () async {
-      final envelope = await LifeOSExporter(tasks: tasks, habits: habits)
+      final envelope = await LifeOSExporter(tasks: tasks, habits: habits, time: time)
           .buildEnvelope();
       final domains = envelope['domains'] as Map<String, dynamic>;
       expect(((domains['tasks'] as Map<String, dynamic>)['tasks'] as List),
@@ -114,11 +117,52 @@ void main() {
           isEmpty);
     });
 
-    test('written file is valid JSON matching the in-memory envelope', () async {
-      final dir = await Directory.systemTemp.createTemp('lifeos-export-json');
+    test('tracked time is exported as sessions plus a per-task total', () async {
+      final task = await tasks.add('Deep work');
+      final untracked = await tasks.add('Never started');
+
+      final session = await time.startSession(task.id, isPomodoro: true);
+      await (taskDb.update(taskDb.timeSessions)
+            ..where((s) => s.id.equals(session.id)))
+          .write(TimeSessionsCompanion(
+            endedAt: Value(DateTime.now().toUtc()),
+            durationSeconds: const Value(1500),
+          ));
+
+      final envelope =
+          await LifeOSExporter(tasks: tasks, habits: habits, time: time)
+              .buildEnvelope();
+      final taskDomain = (envelope['domains'] as Map)['tasks'] as Map;
+
+      final sessions = taskDomain['timeSessions'] as List;
+      expect(sessions, hasLength(1));
+      final sessionJson = sessions.single as Map;
+      expect(sessionJson['taskId'], task.id);
+      expect(sessionJson['durationSeconds'], 1500);
+      expect(sessionJson['isPomodoro'], isTrue);
+      expect(sessionJson['endedAt'], isNotNull);
+
+      final rows = taskDomain['tasks'] as List;
+      final trackedRow =
+          rows.firstWhere((row) => row['id'] == task.id) as Map;
+      final untrackedRow =
+          rows.firstWhere((row) => row['id'] == untracked.id) as Map;
+      expect(trackedRow['trackedSeconds'], 1500);
+      expect(untrackedRow['trackedSeconds'], 0);
+    });
+
+    test('optional finance is omitted when not supplied', () async {
+      final envelope =
+          await LifeOSExporter(tasks: tasks, habits: habits, time: time)
+              .buildEnvelope();
+      final domains = envelope['domains'] as Map<String, dynamic>;
+      expect(domains.containsKey('finance'), isFalse);
+    });
+
+    test('written file is valid JSON matching the in-memory envelope', () async {      final dir = await Directory.systemTemp.createTemp('lifeos-export-json');
       addTearDown(() => dir.delete(recursive: true));
       await tasks.add('Persist me');
-      final exporter = LifeOSExporter(tasks: tasks, habits: habits);
+      final exporter = LifeOSExporter(tasks: tasks, habits: habits, time: time);
 
       final file = await exporter.writeTo(File('${dir.path}/lifeos.json'));
       final decoded =

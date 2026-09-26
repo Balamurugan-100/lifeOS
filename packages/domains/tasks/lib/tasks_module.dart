@@ -4,17 +4,22 @@ import 'package:lifeos_core/lifeos_core.dart'
 import 'src/task_database.dart';
 import 'src/task_repository.dart';
 import 'src/task_summary.dart';
+import 'src/time_repository.dart';
 
 /// The Tasks domain's [ModuleDescriptor] (domain-module-contract.md).
 ///
-/// Exposes the home summary and handles the direct `task.overdue` /
-/// `task.due` complete action. Other kinds are not consumed (returns false so
-/// the caller can fall back to opening the domain).
+/// Exposes the home summary (including tracked time today) and handles the
+/// direct `task.overdue` / `task.due` complete action. Other kinds are not
+/// consumed (returns false so the caller can fall back to opening the domain).
 class TasksModule extends ModuleDescriptor {
-  TasksModule(TaskDatabase database) : _repository = TaskRepository(database);
+  TasksModule(TaskDatabase database)
+      : _repository = TaskRepository(database),
+        _time = TimeRepository(database);
 
   final TaskRepository _repository;
-  late final TaskSummaryBuilder _builder = TaskSummaryBuilder(_repository);
+  final TimeRepository _time;
+  late final TaskSummaryBuilder _builder =
+      TaskSummaryBuilder(_repository, _time);
 
   @override
   String get key => 'tasks';

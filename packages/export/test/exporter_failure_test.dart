@@ -17,10 +17,12 @@ void main() {
     });
     final tasks = TaskRepository(taskDb);
     final habits = HabitRepository(habitDb);
+    final time = TimeRepository(taskDb);
 
     final task = await tasks.add('Keep me safe');
     await habits.define('Keep me too');
-    final exporter = LifeOSExporter(tasks: tasks, habits: habits);
+    final exporter =
+        LifeOSExporter(tasks: tasks, habits: habits, time: time);
 
     // Storage-full style failure: the target path is an existing directory,
     // so writing a file "into" it raises a FileSystemException.

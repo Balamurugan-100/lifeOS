@@ -15,13 +15,14 @@ void main() {
 
     expect(find.byKey(const Key('emptystate')), findsOneWidget);
 
+    // Domains are bottom-bar tabs, not pushed routes, so there is no back
+    // button to press — you go home by tapping Today.
     await tester.tap(find.byKey(const Key('openTasks')));
     await tester.pumpAndSettle();
     expect(find.text('Tasks'), findsWidgets);
-    expect(find.text('No tasks yet. Tap + to add your first one.'),
-        findsOneWidget);
+    expect(find.text('No tasks found. Tap + to add one.'), findsOneWidget);
 
-    await tester.pageBack();
+    await tester.tap(find.byKey(const Key('nav-today')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('emptystate')), findsOneWidget);
 
@@ -32,7 +33,7 @@ void main() {
         find.text('No habits yet. Tap + to build your first streak.'),
         findsOneWidget);
 
-    await tester.pageBack();
+    await tester.tap(find.byKey(const Key('nav-today')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('emptystate')), findsOneWidget);
   });

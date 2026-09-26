@@ -17,16 +17,15 @@ void main() {
       'habits work alongside tasks and feed a distinct home summary',
       (tester) async {
     final executor = openInMemoryExecutor();
-    final taskDb = TaskDatabase(executor);
-    final habitDb = HabitDatabase(executor);
+    final dbs = await createCoreDatabases(executor);
     addTearDown(() async {
-      await taskDb.close();
-      await habitDb.close();
+      await dbs.tasks.close();
+      await dbs.habits.close();
     });
-    await TaskRepository(taskDb).add('Coexist task');
+    await TaskRepository(dbs.tasks).add('Coexist task');
 
-    await HabitRepository(habitDb).define('Read daily');
-    await HabitRepository(habitDb).define(
+    await HabitRepository(dbs.habits).define('Read daily');
+    await HabitRepository(dbs.habits).define(
       'Run weekly',
       schedule: HabitSchedule.weekly({1, 3, 5}),
     );
@@ -43,7 +42,7 @@ void main() {
     final highlight = find.textContaining('Read daily');
     await tester.tap(highlight);
     await tester.pumpAndSettle();
-    expect(find.text('1 doneToday'), findsOneWidget);
+    expect(find.text('1 done today'), findsOneWidget);
     expect(find.text('1 outstanding'), findsOneWidget); // tasks untouched
 
     // Inside Habits, the weekly habit shows its schedule and a streak.
@@ -68,10 +67,10 @@ void main() {
     await tester.tap(todayCheckbox);
     await tester.pumpAndSettle();
 
-    // Back home: habits reflect the un-record (doneToday gone).
-    await tester.pageBack();
+    // Back home: habits reflect the un-record (done-today gone).
+    await tester.tap(find.byKey(const Key('nav-today')));
     await tester.pumpAndSettle();
-    expect(find.text('1 doneToday'), findsNothing);
+    expect(find.text('1 done today'), findsNothing);
     expect(find.text('1 outstanding'), findsOneWidget);
   });
 }

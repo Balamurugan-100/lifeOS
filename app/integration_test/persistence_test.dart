@@ -7,6 +7,8 @@ import 'package:lifeos_habits/lifeos_habits.dart';
 import 'package:lifeos_storage/lifeos_storage.dart';
 import 'package:lifeos_tasks/lifeos_tasks.dart';
 
+import 'helpers.dart';
+
 /// US4 persistence (T057): data created offline survives a full app restart
 /// with zero loss (FR-009, SC-005). Simulated as two sessions over the same
 /// SQLite file: session 1 writes, the executor is closed (restart), session
@@ -22,10 +24,9 @@ void main() {
 
     // ---- Session 1: create data offline ----
     final session1 = openFileExecutor(path);
-    final taskDb = TaskDatabase(session1);
-    final habitDb = HabitDatabase(session1);
-    final tasks = TaskRepository(taskDb);
-    final habits = HabitRepository(habitDb);
+    final dbs = await createCoreDatabases(session1);
+    final tasks = TaskRepository(dbs.tasks);
+    final habits = HabitRepository(dbs.habits);
 
     final task = await tasks.add('Persisted task',
         dueDate: DateTime(2026, 10, 5));
@@ -34,16 +35,15 @@ void main() {
     await habits.record(habit.id, DateTime(2026, 9, 21));
     await habits.record(habit.id, DateTime(2026, 9, 18));
 
-    await taskDb.close();
-    await habitDb.close();
+    await dbs.tasks.close();
+    await dbs.habits.close();
     await closeExecutor(session1);
 
     // ---- Session 2: full app restart ----
     final session2 = openFileExecutor(path);
-    final taskDb2 = TaskDatabase(session2);
-    final habitDb2 = HabitDatabase(session2);
-    final tasks2 = TaskRepository(taskDb2);
-    final habits2 = HabitRepository(habitDb2);
+    final dbs2 = await createCoreDatabases(session2);
+    final tasks2 = TaskRepository(dbs2.tasks);
+    final habits2 = HabitRepository(dbs2.habits);
 
     final reloadedTasks = await tasks2.all();
     expect(reloadedTasks, hasLength(1));
@@ -62,8 +62,8 @@ void main() {
     expect(entries.any((d) => isSameDay(d, DateTime(2026, 9, 21))), isTrue);
     expect(entries.any((d) => isSameDay(d, DateTime(2026, 9, 18))), isTrue);
 
-    await taskDb2.close();
-    await habitDb2.close();
+    await dbs2.tasks.close();
+    await dbs2.habits.close();
     await closeExecutor(session2);
   });
 }

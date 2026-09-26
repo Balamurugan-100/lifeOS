@@ -290,8 +290,93 @@ class FinanceRepository {
   }
 
   Future<void> deleteCategory(String id) async {
+    final inUse = await countTransactionsInCategory(id);
+    if (inUse > 0) {
+      throw CategoryInUseException(id, inUse);
+    }
     await (_db.delete(_db.financeCategories)..where((tbl) => tbl.id.equals(id)))
         .go();
+  }
+
+  /// How many live transactions reference [categoryId].
+  ///
+  /// The UI uses this to explain why a category cannot be deleted, and
+  /// [deleteCategory] uses it to enforce that.
+  Future<int> countTransactionsInCategory(String categoryId) async {
+    final count = _db.financeTransactions.id.count();
+    final row = await (_db.selectOnly(_db.financeTransactions)
+          ..addColumns([count])
+          ..where(_db.financeTransactions.categoryId.equals(categoryId) &
+              _db.financeTransactions.deletedAt.isNull()))
+        .getSingle();
+    return row.read(count) ?? 0;
+  }
+
+  /// True when a category of the same [type] already answers to [name],
+  /// optionally ignoring [excludingId] (so a rename is not a clash with
+  /// itself). The check is case-insensitive.
+  Future<bool> categoryNameInUse(
+    String name,
+    CategoryType type, {
+    String? excludingId,
+  }) async {
+    final wanted = name.trim().toLowerCase();
+    if (wanted.isEmpty) return false;
+    final rows = await getCategories(type: type);
+    for (final row in rows) {
+      if (excludingId != null && row.id == excludingId) continue;
+      if (row.name.trim().toLowerCase() == wanted) return true;
+    }
+    return false;
+  }
+
+  /// Renames and/or restyles a category in place.
+  ///
+  /// Unlike [addCategory] this allows the predefined rows to be edited —
+  /// trimming the shipped list is a supported move — and it keeps the
+  /// original `isPredefined` flag, since that only records how the row was
+  /// born, not how it must behave.
+  Future<FinanceCategory> updateCategory(
+    String id, {
+    String? name,
+    String? iconName,
+    String? colorHex,
+  }) async {
+    final existing = await getCategories();
+    FinanceCategory? current;
+    for (final row in existing) {
+      if (row.id == id) {
+        current = row;
+        break;
+      }
+    }
+    if (current == null) {
+      throw StateError('No finance category with id "$id".');
+    }
+
+    final nextName = (name ?? current.name).trim();
+    if (nextName.isEmpty) {
+      throw ArgumentError.value(name, 'name', 'Category name cannot be empty');
+    }
+    if (nextName.toLowerCase() != current.name.toLowerCase() &&
+        await categoryNameInUse(nextName, current.type, excludingId: id)) {
+      throw CategoryNameTakenException(nextName, current.type);
+    }
+
+    await (_db.update(_db.financeCategories)..where((tbl) => tbl.id.equals(id)))
+        .write(
+      FinanceCategoriesCompanion(
+        name: Value(nextName),
+        iconName: Value(iconName ?? current.iconName),
+        colorHex: Value(colorHex ?? current.colorHex),
+      ),
+    );
+
+    return current.copyWith(
+      name: nextName,
+      iconName: iconName ?? current.iconName,
+      colorHex: colorHex ?? current.colorHex,
+    );
   }
 
   // ==========================================

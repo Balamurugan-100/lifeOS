@@ -22,18 +22,10 @@ class SummarySection extends ConsumerWidget {
 
   Color _getDomainColor(String domainKey) {
     return switch (domainKey) {
-      'tasks' => NeonPalette.cyan,
-      'habits' => NeonPalette.mint,
-      'finance' => NeonPalette.violet,
-      'journal' => NeonPalette.amber,
-      'focus' => NeonPalette.rose,
-      'goals' => NeonPalette.blue,
-      'notes' => const Color(0xFF38BDF8),
-      'rituals' => NeonPalette.amber,
-      'planner' => NeonPalette.cyan,
-      'wellness' => NeonPalette.mint,
-      'review' => NeonPalette.violet,
-      _ => NeonPalette.blue,
+      'tasks' => LifeOSPalette.teal,
+      'habits' => LifeOSPalette.sage,
+      'finance' => LifeOSPalette.clay,
+      _ => LifeOSPalette.slate,
     };
   }
 
@@ -42,15 +34,24 @@ class SummarySection extends ConsumerWidget {
       'tasks' => Icons.checklist_rounded,
       'habits' => Icons.local_fire_department_rounded,
       'finance' => Icons.account_balance_wallet_rounded,
-      'journal' => Icons.edit_note_rounded,
-      'focus' => Icons.timer_outlined,
-      'goals' => Icons.flag_rounded,
-      'notes' => Icons.description_outlined,
-      'rituals' => Icons.wb_sunny_rounded,
-      'planner' => Icons.calendar_month_rounded,
-      'wellness' => Icons.battery_charging_full_rounded,
-      'review' => Icons.rate_review_rounded,
       _ => Icons.dashboard_outlined,
+    };
+  }
+
+  /// Human-readable labels for the summary count keys each domain publishes,
+  /// so the pills never leak internal names like `trackedSeconds`.
+  static String _countLabel(String key) {
+    return switch (key) {
+      'outstanding' => 'outstanding',
+      'overdue' => 'overdue',
+      'completedToday' => 'done today',
+      'doneToday' => 'done today',
+      'trackedMinutes' => 'min tracked',
+      'trackedSeconds' => 'sec tracked',
+      'active' => 'active',
+      'accounts' => 'accounts',
+      'dueToday' => 'due today',
+      _ => key,
     };
   }
 
@@ -68,30 +69,30 @@ class SummarySection extends ConsumerWidget {
 
     return Card(
       key: Key('summary-${summary.domainKey}'),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         side: BorderSide(
           color: isDark
-              ? NeonPalette.borderDark.withValues(alpha: 0.7)
+              ? LifeOSPalette.borderDark.withValues(alpha: 0.7)
               : Colors.grey.shade200,
           width: 1,
         ),
       ),
-      color: isDark ? const Color(0xFF111827) : Colors.white,
+      color: isDark ? LifeOSPalette.surfaceCard : Colors.white,
       clipBehavior: Clip.antiAlias,
       child: Container(
         decoration: BoxDecoration(
           border: Border(
             left: BorderSide(
               color: accentColor,
-              width: 3.5,
+              width: 3,
             ),
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -143,8 +144,8 @@ class SummarySection extends ConsumerWidget {
                                         width: 0.8,
                                       ),
                                     ),
-                                    child: Text(
-                                      '${entry.value} ${entry.key}',
+                                     child: Text(
+                                       '${entry.value} ${_countLabel(entry.key)}',
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,

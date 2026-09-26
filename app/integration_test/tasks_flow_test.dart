@@ -34,13 +34,13 @@ void main() {
     expect(checkbox.value, isTrue);
 
     // Return home: summary reflects the completed task immediately (SC-002).
-    await tester.pageBack();
+    await tester.tap(find.byKey(const Key('nav-today')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('summary-tasks')), findsOneWidget);
-    expect(find.text('1 completedToday'), findsOneWidget);
+    expect(find.text('1 done today'), findsOneWidget);
 
     // Re-enter and delete via the row menu.
-    await tester.tap(find.byKey(const Key('open-tasks')));
+    await tester.tap(find.byKey(const Key('nav-tasks')));
     await tester.pumpAndSettle();
     await tester.tap(find.byType(PopupMenuButton<String>).first);
     await tester.pumpAndSettle();
@@ -51,7 +51,7 @@ void main() {
     expect(find.text('Ship v1'), findsNothing);
 
     // Home no longer shows task data.
-    await tester.pageBack();
+    await tester.tap(find.byKey(const Key('nav-today')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('summary-tasks')), findsNothing);
   });

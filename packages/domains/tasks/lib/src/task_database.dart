@@ -2,17 +2,20 @@ import 'dart:async';
 
 import 'package:drift/drift.dart';
 
+import 'task_category_table.dart';
 import 'task_table.dart';
+import 'time_session_table.dart';
 
 part 'task_database.g.dart';
 
-/// The Tasks domain database: a single task list table (data-model.md).
-@DriftDatabase(tables: [Tasks])
+/// The Tasks domain database: the task list, its editable category registry,
+/// and tracked work sessions.
+@DriftDatabase(tables: [Tasks, TimeSessions, TaskCategories])
 class TaskDatabase extends _$TaskDatabase {
   TaskDatabase(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 4;
 
   /// Drift's default keeps `created_at`/`updated_at` for the AuditFields mixin.
   @override

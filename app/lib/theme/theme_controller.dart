@@ -38,22 +38,28 @@ final themeModeProvider =
   return ThemeModeNotifier();
 });
 
-class NeonPalette {
-  // Base background & surfaces
-  static const obsidian = Color(0xFF030712); // True deep OLED black/slate
-  static const surfaceDark = Color(0xFF0B0F19);
-  static const surfaceCard = Color(0xFF111827);
-  static const surfaceCardHover = Color(0xFF1F2937);
-  static const borderDark = Color(0xFF1F2937);
-  static const borderBright = Color(0xFF374151);
+/// The app's colour vocabulary.
+///
+/// Deliberately low-saturation: muted slate surfaces with a single restrained
+/// teal accent, so long sessions stay comfortable instead of glowing. The
+/// three domain hues (teal / sage / clay) are desaturated versions of the old
+/// neon accents and are used sparingly, mostly as small icons and thin rules.
+class LifeOSPalette {
+  // Base background & surfaces (slate ramp, soft rather than OLED-black)
+  static const canvas = Color(0xFF0F1419); // Scaffold background (dark)
+  static const surfaceDark = Color(0xFF161C23);
+  static const surfaceCard = Color(0xFF1B222B);
+  static const surfaceCardHover = Color(0xFF232C37);
+  static const borderDark = Color(0xFF2A3441);
+  static const borderBright = Color(0xFF3C4859);
 
-  // Vibrant Neon Accents
-  static const cyan = Color(0xFF00E5FF); // Electric Cyan (Tasks & Focus)
-  static const mint = Color(0xFF00FF9D); // Neon Mint (Habits & Streaks)
-  static const violet = Color(0xFFA855F7); // Neon Violet (Finances & Wealth)
-  static const amber = Color(0xFFFFB703); // Neon Amber (Pending & Warnings)
-  static const rose = Color(0xFFFF0055); // Neon Rose/Crimson (Overdue & Expenses)
-  static const blue = Color(0xFF38BDF8); // Electric Sky Blue
+  // Muted domain accents
+  static const teal = Color(0xFF5FA8A0); // Tasks & time
+  static const sage = Color(0xFF7FA86F); // Habits & streaks
+  static const clay = Color(0xFFB08968); // Finance
+  static const sand = Color(0xFFC9A227); // Pending & warnings
+  static const rust = Color(0xFFB5646A); // Overdue & expenses
+  static const slate = Color(0xFF7C8DA6); // Neutral / secondary
 }
 
 class AppTheme {
@@ -61,27 +67,27 @@ class AppTheme {
     useMaterial3: true,
     brightness: Brightness.light,
     colorScheme: ColorScheme.fromSeed(
-      seedColor: const Color(0xFF4F46E5),
+      seedColor: const Color(0xFF4E8A83),
       brightness: Brightness.light,
-      surface: const Color(0xFFF8FAFC),
+      surface: const Color(0xFFF6F7F8),
       surfaceContainerLowest: const Color(0xFFFFFFFF),
-      surfaceContainerLow: const Color(0xFFF1F5F9),
-      surfaceContainer: const Color(0xFFE2E8F0),
-      surfaceContainerHigh: const Color(0xFFCBD5E1),
+      surfaceContainerLow: const Color(0xFFF0F2F3),
+      surfaceContainer: const Color(0xFFE4E7EA),
+      surfaceContainerHigh: const Color(0xFFD5D9DE),
     ),
-    scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+    scaffoldBackgroundColor: const Color(0xFFF6F7F8),
     cardTheme: CardThemeData(
       elevation: 0,
       color: Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: Color(0xFFE2E8F0), width: 1),
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: Color(0xFFE2E6EA), width: 1),
       ),
     ),
     appBarTheme: const AppBarTheme(
       elevation: 0,
       scrolledUnderElevation: 0,
-      backgroundColor: Color(0xFFF8FAFC),
+      backgroundColor: Color(0xFFF6F7F8),
       centerTitle: false,
     ),
   );
@@ -91,55 +97,55 @@ class AppTheme {
     brightness: Brightness.dark,
     colorScheme: const ColorScheme(
       brightness: Brightness.dark,
-      primary: NeonPalette.cyan,
-      onPrimary: Color(0xFF030712),
-      primaryContainer: Color(0xFF083344),
-      onPrimaryContainer: Color(0xFF67E8F9),
-      secondary: NeonPalette.mint,
-      onSecondary: Color(0xFF030712),
-      secondaryContainer: Color(0xFF064E3B),
-      onSecondaryContainer: Color(0xFF6EE7B7),
-      tertiary: NeonPalette.violet,
-      onTertiary: Color(0xFF030712),
-      tertiaryContainer: Color(0xFF3B0764),
-      onTertiaryContainer: Color(0xFFD8B4FE),
-      error: NeonPalette.rose,
-      onError: Color(0xFF030712),
-      errorContainer: Color(0xFF4C0519),
-      onErrorContainer: Color(0xFFFDA4AF),
-      surface: NeonPalette.surfaceDark,
-      onSurface: Color(0xFFF9FAFB),
-      surfaceContainerLowest: NeonPalette.obsidian,
-      surfaceContainerLow: NeonPalette.surfaceDark,
-      surfaceContainer: NeonPalette.surfaceCard,
-      surfaceContainerHigh: NeonPalette.surfaceCardHover,
-      surfaceContainerHighest: Color(0xFF374151),
-      onSurfaceVariant: Color(0xFF9CA3AF),
-      outline: Color(0xFF4B5563),
-      outlineVariant: Color(0xFF1F2937),
+      primary: LifeOSPalette.teal,
+      onPrimary: Color(0xFF0F1419),
+      primaryContainer: Color(0xFF22322F),
+      onPrimaryContainer: Color(0xFFB9DAD4),
+      secondary: LifeOSPalette.sage,
+      onSecondary: Color(0xFF0F1419),
+      secondaryContainer: Color(0xFF26301F),
+      onSecondaryContainer: Color(0xFFC7DCBA),
+      tertiary: LifeOSPalette.clay,
+      onTertiary: Color(0xFF0F1419),
+      tertiaryContainer: Color(0xFF33291F),
+      onTertiaryContainer: Color(0xFFDEC3AC),
+      error: LifeOSPalette.rust,
+      onError: Color(0xFF0F1419),
+      errorContainer: Color(0xFF3A2022),
+      onErrorContainer: Color(0xFFE8BFC1),
+      surface: LifeOSPalette.surfaceDark,
+      onSurface: Color(0xFFE6E9ED),
+      surfaceContainerLowest: LifeOSPalette.canvas,
+      surfaceContainerLow: LifeOSPalette.surfaceDark,
+      surfaceContainer: LifeOSPalette.surfaceCard,
+      surfaceContainerHigh: LifeOSPalette.surfaceCardHover,
+      surfaceContainerHighest: Color(0xFF2A3441),
+      onSurfaceVariant: Color(0xFFA2ADBB),
+      outline: Color(0xFF4A5666),
+      outlineVariant: LifeOSPalette.borderDark,
     ),
-    scaffoldBackgroundColor: NeonPalette.obsidian,
+    scaffoldBackgroundColor: LifeOSPalette.canvas,
     cardTheme: CardThemeData(
       elevation: 0,
-      color: NeonPalette.surfaceCard,
+      color: LifeOSPalette.surfaceCard,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: NeonPalette.borderDark, width: 1.2),
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: LifeOSPalette.borderDark, width: 1),
       ),
     ),
     appBarTheme: const AppBarTheme(
       elevation: 0,
       scrolledUnderElevation: 0,
-      backgroundColor: NeonPalette.obsidian,
+      backgroundColor: LifeOSPalette.canvas,
       centerTitle: false,
       foregroundColor: Colors.white,
     ),
     bottomSheetTheme: const BottomSheetThemeData(
-      backgroundColor: NeonPalette.surfaceDark,
-      modalBackgroundColor: NeonPalette.surfaceDark,
+      backgroundColor: LifeOSPalette.surfaceDark,
+      modalBackgroundColor: LifeOSPalette.surfaceDark,
     ),
     dialogTheme: const DialogThemeData(
-      backgroundColor: NeonPalette.surfaceDark,
+      backgroundColor: LifeOSPalette.surfaceDark,
     ),
   );
 }

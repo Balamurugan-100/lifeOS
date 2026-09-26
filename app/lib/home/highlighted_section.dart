@@ -15,7 +15,7 @@ class HighlightedItemTile extends ConsumerWidget {
     required this.item,
     required this.onOpenDomain,
     required this.onComplete,
-    this.accentColor = NeonPalette.cyan,
+    this.accentColor = LifeOSPalette.teal,
   });
 
   final DomainSummary summary;
@@ -31,7 +31,7 @@ class HighlightedItemTile extends ConsumerWidget {
 
     return Container(
       key: Key('highlight-${summary.domainKey}-${item.id}'),
-      margin: const EdgeInsets.only(top: 8),
+      margin: const EdgeInsets.only(top: 6),
       decoration: BoxDecoration(
         color: isDark
             ? Colors.white.withValues(alpha: 0.04)
@@ -39,7 +39,7 @@ class HighlightedItemTile extends ConsumerWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isDark
-              ? NeonPalette.borderDark.withValues(alpha: 0.6)
+              ? LifeOSPalette.borderDark.withValues(alpha: 0.6)
               : Colors.grey.shade200,
         ),
       ),
@@ -65,7 +65,7 @@ class HighlightedItemTile extends ConsumerWidget {
             }
           },
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
                 // Leading Icon / Action Trigger

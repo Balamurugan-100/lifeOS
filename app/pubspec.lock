@@ -340,66 +340,10 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
-  lifeos_focus:
-    dependency: "direct main"
-    description:
-      path: "../packages/domains/focus"
-      relative: true
-    source: path
-    version: "0.1.0"
-  lifeos_gamification:
-    dependency: "direct main"
-    description:
-      path: "../packages/domains/gamification"
-      relative: true
-    source: path
-    version: "0.1.0"
-  lifeos_goals:
-    dependency: "direct main"
-    description:
-      path: "../packages/domains/goals"
-      relative: true
-    source: path
-    version: "0.1.0"
   lifeos_habits:
     dependency: "direct main"
     description:
       path: "../packages/domains/habits"
-      relative: true
-    source: path
-    version: "0.1.0"
-  lifeos_journal:
-    dependency: "direct main"
-    description:
-      path: "../packages/domains/journal"
-      relative: true
-    source: path
-    version: "0.1.0"
-  lifeos_notes:
-    dependency: "direct main"
-    description:
-      path: "../packages/domains/notes"
-      relative: true
-    source: path
-    version: "0.1.0"
-  lifeos_planner:
-    dependency: "direct main"
-    description:
-      path: "../packages/domains/planner"
-      relative: true
-    source: path
-    version: "0.1.0"
-  lifeos_review:
-    dependency: "direct main"
-    description:
-      path: "../packages/domains/review"
-      relative: true
-    source: path
-    version: "0.1.0"
-  lifeos_rituals:
-    dependency: "direct main"
-    description:
-      path: "../packages/domains/rituals"
       relative: true
     source: path
     version: "0.1.0"
@@ -414,13 +358,6 @@ packages:
     dependency: "direct main"
     description:
       path: "../packages/domains/tasks"
-      relative: true
-    source: path
-    version: "0.1.0"
-  lifeos_wellness:
-    dependency: "direct main"
-    description:
-      path: "../packages/domains/wellness"
       relative: true
     source: path
     version: "0.1.0"

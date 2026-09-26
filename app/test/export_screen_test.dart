@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lifeos_app/app.dart';
 import 'package:lifeos_app/navigation/export_screen.dart';
 import 'package:lifeos_habits/lifeos_habits.dart';
-import 'package:lifeos_notes/lifeos_notes.dart';
 import 'package:lifeos_storage/lifeos_storage.dart';
 import 'package:lifeos_tasks/lifeos_tasks.dart';
 
@@ -13,17 +12,14 @@ void main() {
       (tester) async {
     final taskDb = TaskDatabase(openInMemoryExecutor());
     final habitDb = HabitDatabase(openInMemoryExecutor());
-    final noteDb = NoteDatabase(openInMemoryExecutor());
     await taskDb.ensureTables();
     await habitDb.ensureTables();
-    await noteDb.ensureTables();
 
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
           taskDatabaseProvider.overrideWith((ref) async => taskDb),
           habitDatabaseProvider.overrideWith((ref) async => habitDb),
-          noteDatabaseProvider.overrideWith((ref) async => noteDb),
         ],
         child: const MaterialApp(
           home: ExportScreen(),

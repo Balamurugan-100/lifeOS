@@ -50,3 +50,32 @@ class FinanceCategory {
     );
   }
 }
+
+/// Thrown by [FinanceRepository.deleteCategory] when transactions still point
+/// at the category.
+///
+/// Deleting anyway would leave those transactions with a `categoryId` that
+/// resolves to nothing, so the count is surfaced to the user instead and they
+/// reassign or clear the transactions first.
+class CategoryInUseException implements Exception {
+  const CategoryInUseException(this.categoryId, this.transactionCount);
+
+  final String categoryId;
+  final int transactionCount;
+
+  @override
+  String toString() => 'CategoryInUseException: category "$categoryId" is used '
+      'by $transactionCount transaction(s); reassign or clear them first.';
+}
+
+/// Thrown when a category of the same [type] already answers to that name.
+class CategoryNameTakenException implements Exception {
+  const CategoryNameTakenException(this.name, this.type);
+
+  final String name;
+  final CategoryType type;
+
+  @override
+  String toString() => 'CategoryNameTakenException: a ${type.name} category '
+      'named "$name" already exists.';
+}

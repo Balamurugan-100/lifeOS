@@ -35,13 +35,9 @@ class NotificationScheduleItem {
   TimeOfDay get time => TimeOfDay(hour: hour, minute: minute);
 
   IconData get iconData => switch (key) {
-        'morning_rituals' => Icons.wb_sunny_rounded,
         'task_deadlines' => Icons.checklist_rounded,
-        'focus_sprint' => Icons.timer_outlined,
+        'time_tracking' => Icons.timer_outlined,
         'habits_check' => Icons.local_fire_department_rounded,
-        'evening_routine' => Icons.nightlight_round,
-        'daily_reflection' => Icons.edit_note_rounded,
-        'sleep_bedtime' => Icons.bedtime_rounded,
         _ => Icons.notifications_active_rounded,
       };
 
@@ -180,76 +176,45 @@ class NotificationService {
     }
   }
 
+  /// The three reminders that map onto the surviving domains. Anything a
+  /// previous install persisted for a removed domain is dropped by
+  /// [getSchedules], which filters against these keys.
+  static const List<String> _knownKeys = [
+    'task_deadlines',
+    'time_tracking',
+    'habits_check',
+  ];
+
   static List<NotificationScheduleItem> get _defaults => [
         NotificationScheduleItem(
-          key: 'morning_rituals',
-          title: '🌅 Morning Kickstart',
-          message: 'Time for your morning routine: hydrate, review today\'s priorities, and focus.',
-          hour: 7,
-          minute: 0,
-          isEnabled: true,
-          iconCode: Icons.wb_sunny_rounded.codePoint,
-          colorHex: '#F59E0B',
-        ),
-        NotificationScheduleItem(
           key: 'task_deadlines',
-          title: '📋 Task Deadlines & Action Queue',
-          message: 'Check your high-priority items and upcoming deliverables due today.',
+          title: 'Task deadlines',
+          message: 'Check the high-priority items due today and pick one to start.',
           hour: 9,
           minute: 0,
           isEnabled: true,
           iconCode: Icons.checklist_rounded.codePoint,
-          colorHex: '#38BDF8',
+          colorHex: '#5FA8A0',
         ),
         NotificationScheduleItem(
-          key: 'focus_sprint',
-          title: '⏱️ Deep Work Block',
-          message: 'Ready for a distraction-free 25-minute focus session? Get in the zone.',
+          key: 'time_tracking',
+          title: 'Start a focus block',
+          message: 'Open a task and run a 25-minute Pomodoro to log your time.',
           hour: 11,
           minute: 0,
           isEnabled: true,
           iconCode: Icons.timer_outlined.codePoint,
-          colorHex: '#F43F5E',
+          colorHex: '#7C8DA6',
         ),
         NotificationScheduleItem(
           key: 'habits_check',
-          title: '🔥 Habit Streaks Alert',
-          message: 'Keep your streaks unbroken! Complete your scheduled habits for the day.',
+          title: 'Habit check-in',
+          message: 'Keep the streak alive — tick off the habits you planned for today.',
           hour: 13,
           minute: 30,
           isEnabled: true,
           iconCode: Icons.local_fire_department_rounded.codePoint,
-          colorHex: '#10B981',
-        ),
-        NotificationScheduleItem(
-          key: 'evening_routine',
-          title: '🌙 Evening Wind-down',
-          message: 'Time to close open loops, clear the inbox, and start winding down.',
-          hour: 20,
-          minute: 30,
-          isEnabled: true,
-          iconCode: Icons.nightlight_round.codePoint,
-          colorHex: '#8B5CF6',
-        ),
-        NotificationScheduleItem(
-          key: 'daily_reflection',
-          title: '📖 Daily Reflection & Review',
-          message: 'Log your daily mood score, wins, and calibrate tomorrow\'s 3 Big Bets.',
-          hour: 21,
-          minute: 30,
-          isEnabled: true,
-          iconCode: Icons.edit_note_rounded.codePoint,
-          colorHex: '#F59E0B',
-        ),
-        NotificationScheduleItem(
-          key: 'sleep_bedtime',
-          title: '💤 Sleep & Rest Target',
-          message: 'Screens off. Log your sleep targets and prepare for restorative sleep.',
-          hour: 22,
-          minute: 30,
-          isEnabled: true,
-          iconCode: Icons.bedtime_rounded.codePoint,
-          colorHex: '#8B5CF6',
+          colorHex: '#7FA86F',
         ),
       ];
 
@@ -263,7 +228,24 @@ class NotificationService {
 
     try {
       final list = jsonDecode(raw) as List;
-      return list.map((e) => NotificationScheduleItem.fromJson(e as Map<String, dynamic>)).toList();
+      final parsed = list
+          .map((e) => NotificationScheduleItem.fromJson(e as Map<String, dynamic>))
+          .where((i) => _knownKeys.contains(i.key))
+          .toList();
+      // Fold anything a previous install persisted for a since-removed domain
+      // into a freshly seeded default, and repersist so the prune sticks.
+      for (final fallback in _defaults) {
+        if (!parsed.any((i) => i.key == fallback.key)) {
+          parsed.add(fallback);
+        }
+      }
+      parsed.sort(
+        (a, b) => a.hour == b.hour ? a.minute.compareTo(b.minute) : a.hour.compareTo(b.hour),
+      );
+      if (parsed.length != list.length) {
+        await saveSchedules(parsed);
+      }
+      return parsed;
     } catch (_) {
       return _defaults;
     }
@@ -320,7 +302,7 @@ class NotificationService {
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: NeonPalette.cyan, width: 1.5),
+          side: const BorderSide(color: LifeOSPalette.teal, width: 1.5),
         ),
         duration: const Duration(seconds: 2),
         content: Row(
@@ -328,10 +310,10 @@ class NotificationService {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: NeonPalette.cyan.withValues(alpha: 0.2),
+                color: LifeOSPalette.teal.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.notifications_active_rounded, color: NeonPalette.cyan, size: 20),
+              child: const Icon(Icons.notifications_active_rounded, color: LifeOSPalette.teal, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(

@@ -2,17 +2,8 @@ import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lifeos_finance/lifeos_finance.dart';
-import 'package:lifeos_focus/lifeos_focus.dart';
-import 'package:lifeos_gamification/lifeos_gamification.dart';
-import 'package:lifeos_goals/lifeos_goals.dart';
 import 'package:lifeos_habits/lifeos_habits.dart';
-import 'package:lifeos_journal/lifeos_journal.dart';
-import 'package:lifeos_notes/lifeos_notes.dart';
-import 'package:lifeos_planner/lifeos_planner.dart';
-import 'package:lifeos_review/lifeos_review.dart';
-import 'package:lifeos_rituals/lifeos_rituals.dart';
 import 'package:lifeos_tasks/lifeos_tasks.dart';
-import 'package:lifeos_wellness/lifeos_wellness.dart';
 
 import 'bootstrap/database.dart';
 import 'home/home_screen.dart';
@@ -48,68 +39,14 @@ final financeDatabaseProvider = FutureProvider<FinanceDatabase>((ref) async {
   return db;
 });
 
-final journalDatabaseProvider = FutureProvider<JournalDatabase>((ref) async {
-  final db = JournalDatabase(await ref.watch(databaseExecutorProvider.future));
-  await db.ensureTables();
-  return db;
-});
-
-final focusDatabaseProvider = FutureProvider<FocusDatabase>((ref) async {
-  final db = FocusDatabase(await ref.watch(databaseExecutorProvider.future));
-  await db.ensureTables();
-  return db;
-});
-
-final goalDatabaseProvider = FutureProvider<GoalDatabase>((ref) async {
-  final db = GoalDatabase(await ref.watch(databaseExecutorProvider.future));
-  await db.ensureTables();
-  return db;
-});
-
-final noteDatabaseProvider = FutureProvider<NoteDatabase>((ref) async {
-  final db = NoteDatabase(await ref.watch(databaseExecutorProvider.future));
-  await db.ensureTables();
-  return db;
-});
-
-final gamificationDatabaseProvider =
-    FutureProvider<GamificationDatabase>((ref) async {
-  final db =
-      GamificationDatabase(await ref.watch(databaseExecutorProvider.future));
-  await db.ensureTables();
-  return db;
-});
-
-final ritualsDatabaseProvider = FutureProvider<RitualsDatabase>((ref) async {
-  final db =
-      RitualsDatabase(await ref.watch(databaseExecutorProvider.future));
-  await db.ensureTables();
-  return db;
-});
-
-final plannerDatabaseProvider = FutureProvider<PlannerDatabase>((ref) async {
-  final db =
-      PlannerDatabase(await ref.watch(databaseExecutorProvider.future));
-  await db.ensureTables();
-  return db;
-});
-
-final wellnessDatabaseProvider = FutureProvider<WellnessDatabase>((ref) async {
-  final db =
-      WellnessDatabase(await ref.watch(databaseExecutorProvider.future));
-  await db.ensureTables();
-  return db;
-});
-
-final reviewDatabaseProvider = FutureProvider<ReviewDatabase>((ref) async {
-  final db =
-      ReviewDatabase(await ref.watch(databaseExecutorProvider.future));
-  await db.ensureTables();
-  return db;
-});
-
 final taskRepositoryProvider = FutureProvider<TaskRepository>((ref) async {
   return TaskRepository(await ref.watch(taskDatabaseProvider.future));
+});
+
+/// Time tracking and the Pomodoro runner live in the Tasks domain, so the
+/// time repository is built on the task database rather than a separate one.
+final timeRepositoryProvider = FutureProvider<TimeRepository>((ref) async {
+  return TimeRepository(await ref.watch(taskDatabaseProvider.future));
 });
 
 final habitRepositoryProvider = FutureProvider<HabitRepository>((ref) async {
@@ -118,48 +55,6 @@ final habitRepositoryProvider = FutureProvider<HabitRepository>((ref) async {
 
 final financeRepositoryProvider = FutureProvider<FinanceRepository>((ref) async {
   return FinanceRepository(await ref.watch(financeDatabaseProvider.future));
-});
-
-final journalRepositoryProvider = FutureProvider<JournalRepository>((ref) async {
-  return JournalRepository(await ref.watch(journalDatabaseProvider.future));
-});
-
-final focusRepositoryProvider = FutureProvider<FocusRepository>((ref) async {
-  return FocusRepository(await ref.watch(focusDatabaseProvider.future));
-});
-
-final goalRepositoryProvider = FutureProvider<GoalRepository>((ref) async {
-  return GoalRepository(await ref.watch(goalDatabaseProvider.future));
-});
-
-final notesRepositoryProvider = FutureProvider<NotesRepository>((ref) async {
-  return NotesRepository(await ref.watch(noteDatabaseProvider.future));
-});
-
-final gamificationRepositoryProvider =
-    FutureProvider<GamificationRepository>((ref) async {
-  return GamificationRepository(
-      await ref.watch(gamificationDatabaseProvider.future));
-});
-
-final ritualsRepositoryProvider =
-    FutureProvider<RitualsRepository>((ref) async {
-  return RitualsRepository(await ref.watch(ritualsDatabaseProvider.future));
-});
-
-final plannerRepositoryProvider =
-    FutureProvider<PlannerRepository>((ref) async {
-  return PlannerRepository(await ref.watch(plannerDatabaseProvider.future));
-});
-
-final wellnessRepositoryProvider =
-    FutureProvider<WellnessRepository>((ref) async {
-  return WellnessRepository(await ref.watch(wellnessDatabaseProvider.future));
-});
-
-final reviewRepositoryProvider =
-    FutureProvider<ReviewRepository>((ref) async {
-  return ReviewRepository(await ref.watch(reviewDatabaseProvider.future));
 });
 
 /// The LifeOS app shell: one `MaterialApp`, one home, per-domain

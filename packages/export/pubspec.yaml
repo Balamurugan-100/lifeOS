@@ -19,29 +19,12 @@ dependencies:
     path: ../storage
   lifeos_tasks:
     path: ../domains/tasks
-  lifeos_journal:
-    path: ../domains/journal
-  lifeos_focus:
-    path: ../domains/focus
-  lifeos_goals:
-    path: ../domains/goals
-  lifeos_notes:
-    path: ../domains/notes
-  lifeos_gamification:
-    path: ../domains/gamification
-  lifeos_rituals:
-    path: ../domains/rituals
-  lifeos_planner:
-    path: ../domains/planner
-  lifeos_wellness:
-    path: ../domains/wellness
-  lifeos_review:
-    path: ../domains/review
   path: ^1.8.0
   path_provider: ^2.0.0
   share_plus: ^10.0.0
 
 dev_dependencies:
+  drift: ^2.0.0
   flutter_lints: ^4.0.0
   flutter_test:
     sdk: flutter

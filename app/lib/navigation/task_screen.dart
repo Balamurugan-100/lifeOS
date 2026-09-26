@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lifeos_core/lifeos_core.dart';
@@ -5,12 +7,49 @@ import 'package:lifeos_tasks/lifeos_tasks.dart';
 
 import '../app.dart';
 import '../home/home_controller.dart';
+import '../time/time_format.dart';
 
 /// Live task list for the Tasks screen (T041).
 final taskListProvider = FutureProvider<List<Task>>((ref) async {
   final repo = await ref.watch(taskRepositoryProvider.future);
   return repo.all();
 });
+
+/// Total tracked seconds per task id — the "how much time did I spend on this"
+/// figure shown on every tile. Invalidated whenever a session starts or stops
+/// (see [_invalidateTime]), never polled.
+final taskTimeTotalsProvider = FutureProvider<Map<String, int>>((ref) async {
+  final time = await ref.watch(timeRepositoryProvider.future);
+  return time.totalsByTask();
+});
+
+/// The one in-flight session, if any. There can be at most one by design: a
+/// start on a new task stops the previous one. Invalidated on mutation; the
+/// smooth per-second advance comes from [_TickingTimer] instead of polling.
+final activeTimeSessionProvider = FutureProvider<TimeSession?>((ref) async {
+  final time = await ref.watch(timeRepositoryProvider.future);
+  return time.activeSession();
+});
+
+/// Tracked seconds today, used by the summary bar above the list.
+final trackedTodayProvider = FutureProvider<({int seconds, int sessions})>(
+  (ref) async {
+    final time = await ref.watch(timeRepositoryProvider.future);
+    return (
+      seconds: await time.totalSecondsForToday(),
+      sessions: await time.sessionCountForDay(todayLocal()),
+    );
+  },
+);
+
+/// Refreshes everything derived from the TimeSessions table. Called after every
+/// start/stop so tiles, the bar and the home summary stay consistent.
+void _invalidateTime(WidgetRef ref) {
+  ref.invalidate(taskTimeTotalsProvider);
+  ref.invalidate(activeTimeSessionProvider);
+  ref.invalidate(trackedTodayProvider);
+  ref.invalidate(summariesProvider);
+}
 
 /// The feature-rich Tasks domain screen: create, edit, complete, delete, manual
 /// ordering, priority levels, notes, categories, search, and due date filters.
@@ -35,6 +74,9 @@ class _TaskScreenState extends ConsumerState<TaskScreen> {
   @override
   Widget build(BuildContext context) {
     final tasksAsync = ref.watch(taskListProvider);
+    final totalsAsync = ref.watch(taskTimeTotalsProvider);
+    final todayAsync = ref.watch(trackedTodayProvider);
+    final activeAsync = ref.watch(activeTimeSessionProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -55,10 +97,16 @@ class _TaskScreenState extends ConsumerState<TaskScreen> {
             onRefresh: () async {
               ref.invalidate(taskListProvider);
               ref.invalidate(summariesProvider);
+              _invalidateTime(ref);
             },
             child: Column(
               children: [
                 _buildTopStatsBar(context, tasks, today),
+                _TimeTrackingBar(
+                  today: todayAsync,
+                  active: activeAsync,
+                  activeTitle: _titleOf(activeAsync.valueOrNull, tasks),
+                ),
                 _buildSearchAndFilters(context),
                 Expanded(
                   child: _TaskList(
@@ -66,6 +114,9 @@ class _TaskScreenState extends ConsumerState<TaskScreen> {
                     today: today,
                     filter: _selectedFilter,
                     searchQuery: _searchQuery,
+                    trackedSeconds: totalsAsync.valueOrNull ?? const {},
+                    activeSession: activeAsync.valueOrNull,
+                    onTimeChanged: () => _invalidateTime(ref),
                   ),
                 ),
               ],
@@ -74,6 +125,15 @@ class _TaskScreenState extends ConsumerState<TaskScreen> {
         },
       ),
     );
+  }
+
+  /// The title of the task the running session belongs to, for the bar's caption.
+  static String? _titleOf(TimeSession? session, List<Task> tasks) {
+    if (session == null) return null;
+    for (final task in tasks) {
+      if (task.id == session.taskId) return task.title;
+    }
+    return null;
   }
 
   Widget _buildTopStatsBar(
@@ -320,12 +380,18 @@ class _TaskList extends ConsumerStatefulWidget {
     required this.today,
     required this.filter,
     required this.searchQuery,
+    required this.trackedSeconds,
+    required this.activeSession,
+    required this.onTimeChanged,
   });
 
   final List<Task> tasks;
   final DateTime today;
   final String filter;
   final String searchQuery;
+  final Map<String, int> trackedSeconds;
+  final TimeSession? activeSession;
+  final VoidCallback onTimeChanged;
 
   @override
   ConsumerState<_TaskList> createState() => _TaskListState();
@@ -552,6 +618,9 @@ class _TaskListState extends ConsumerState<_TaskList> {
             onDeleteConfirmed: () => _delete(task, confirm: false),
             onDeleteRequested: () => _delete(task),
             onEdit: () => _edit(task),
+            trackedSeconds: widget.trackedSeconds[task.id] ?? 0,
+            isTracking: widget.activeSession?.taskId == task.id,
+            onTimeChanged: widget.onTimeChanged,
           ),
         );
       },
@@ -559,7 +628,7 @@ class _TaskListState extends ConsumerState<_TaskList> {
   }
 }
 
-class _TaskTile extends StatelessWidget {
+class _TaskTile extends ConsumerWidget {
   const _TaskTile({
     required this.task,
     required this.today,
@@ -567,6 +636,9 @@ class _TaskTile extends StatelessWidget {
     required this.onDeleteConfirmed,
     required this.onDeleteRequested,
     required this.onEdit,
+    required this.trackedSeconds,
+    required this.isTracking,
+    required this.onTimeChanged,
   });
 
   final Task task;
@@ -575,6 +647,9 @@ class _TaskTile extends StatelessWidget {
   final VoidCallback onDeleteConfirmed;
   final VoidCallback onDeleteRequested;
   final VoidCallback onEdit;
+  final int trackedSeconds;
+  final bool isTracking;
+  final VoidCallback onTimeChanged;
 
   Color _priorityColor(TaskPriority priority) {
     return switch (priority) {
@@ -586,7 +661,7 @@ class _TaskTile extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final overdue = task.isOverdue(today);
     final isDueToday = task.dueDate != null && isSameDay(task.dueDate!, today);
     final theme = Theme.of(context);
@@ -777,17 +852,63 @@ class _TaskTile extends StatelessWidget {
                               ),
                             ),
                           ),
+                        if (trackedSeconds > 0 || isTracking)
+                          Container(
+                            key: Key('task-time-${task.id}'),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  isTracking
+                                      ? Icons.timer_rounded
+                                      : Icons.schedule_rounded,
+                                  size: 11,
+                                  color: theme.colorScheme.primary,
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  formatTracked(Duration(seconds: trackedSeconds)),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                       ],
                     ),
                   ],
                 ),
               ),
+              IconButton(
+                key: Key('track-time-${task.id}'),
+                tooltip: isTracking ? 'Stop timer' : 'Track time',
+                iconSize: 20,
+                color: isTracking
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurfaceVariant,
+                icon: Icon(
+                  isTracking ? Icons.stop_circle_outlined : Icons.timer_outlined,
+                ),
+                onPressed: () => isTracking
+                    ? _stopTracking(ref)
+                    : _openTimeSheet(context, ref),
+              ),
               PopupMenuButton<String>(
                 onSelected: (value) {
                   if (value == 'edit') onEdit();
                   if (value == 'delete') onDeleteRequested();
+                  if (value == 'time') _openTimeSheet(context, ref);
                 },
                 itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'time', child: Text('Track time')),
                   PopupMenuItem(value: 'edit', child: Text('Edit')),
                   PopupMenuItem(value: 'delete', child: Text('Delete')),
                 ],
@@ -796,6 +917,509 @@ class _TaskTile extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> _stopTracking(WidgetRef ref) async {
+    final time = await ref.read(timeRepositoryProvider.future);
+    await time.stopSession((await time.activeSession())!.id);
+    onTimeChanged();
+  }
+
+  Future<void> _openTimeSheet(BuildContext context, WidgetRef ref) {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _TaskTimeSheet(task: task),
+    );
+  }
+}
+
+/// "Where did my day go" strip: the total tracked today plus a live Stop
+/// button for whatever session is running. Renders nothing when there is no
+/// time logged and no active session, so a fresh install keeps the screen airy.
+class _TimeTrackingBar extends ConsumerWidget {
+  const _TimeTrackingBar({
+    required this.today,
+    required this.active,
+    required this.activeTitle,
+  });
+
+  final AsyncValue<({int seconds, int sessions})> today;
+  final AsyncValue<TimeSession?> active;
+  final String? activeTitle;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final seconds = today.valueOrNull?.seconds ?? 0;
+    final sessions = today.valueOrNull?.sessions ?? 0;
+    final session = active.valueOrNull;
+
+    if (seconds == 0 && session == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Card(
+        key: const Key('time-tracking-bar'),
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: theme.colorScheme.primary.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+          child: Row(
+            children: [
+              Icon(
+                Icons.timer_outlined,
+                size: 20,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Tracked today',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      formatTracked(Duration(seconds: seconds)),
+                      key: const Key('tracked-today-value'),
+                      style: TextStyle(
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    Text(
+                      '$sessions session${sessions == 1 ? '' : 's'}'
+                      '${activeTitle == null ? '' : ' · on $activeTitle'}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (session != null) ...[
+                TickingTimer(
+                  builder: (_) => FilledButton.tonalIcon(
+                    key: const Key('stop-active-timer'),
+                    onPressed: () async {
+                      final time = await ref.read(timeRepositoryProvider.future);
+                      await time.stopSession(session.id);
+                      _invalidateTime(ref);
+                    },
+                    icon: const Icon(Icons.stop_rounded, size: 18),
+                    label: const Text('Stop'),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Session history for the per-task time sheet.
+final taskSessionsProvider =
+    FutureProvider.family<List<TimeSession>, String>((ref, taskId) async {
+  final time = await ref.watch(timeRepositoryProvider.future);
+  return time.sessionsForTask(taskId);
+});
+
+/// Per-task time detail, opened from a tile's timer button:
+///
+///  * the running total for this task, live while a session is open;
+///  * free tracking — start/stop a session whenever you like;
+///  * a Pomodoro runner that logs each focus block as a `pomodoro` session and
+///    closes that session when the block ends.
+class _TaskTimeSheet extends ConsumerStatefulWidget {
+  const _TaskTimeSheet({required this.task});
+
+  final Task task;
+
+  @override
+  ConsumerState<_TaskTimeSheet> createState() => _TaskTimeSheetState();
+}
+
+class _TaskTimeSheetState extends ConsumerState<_TaskTimeSheet> {
+  final PomodoroEngine _engine = PomodoroEngine();
+  Timer? _ticker;
+
+  /// Total for this task as of [_baseAt]; the live display adds the gap between
+  /// [_baseAt] and now while a session is open, so the number advances without
+  /// re-querying on every tick. Re-captured after every start/stop.
+  int _baseSeconds = 0;
+  DateTime _baseAt = DateTime.now().toUtc();
+
+  /// True when the Pomodoro runner (not the user) opened the logged session, so
+  /// the runner may close it when a focus block ends.
+  bool _runnerOpenedSession = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _captureBase();
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _captureBase() async {
+    final time = await ref.read(timeRepositoryProvider.future);
+    final totals = await time.totalsByTask();
+    if (!mounted) return;
+    setState(() {
+      _baseSeconds = totals[widget.task.id] ?? 0;
+      _baseAt = DateTime.now().toUtc();
+    });
+  }
+
+  void _startTicker() {
+    _ticker ??= Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      _mutateEngine(_engine.tick);
+    });
+  }
+
+  /// Applies any engine mutation, keeping the logged session in step with it.
+  /// Leaving the focus phase — by expiry, skip or pause — closes a session the
+  /// runner opened, so a Pomodoro block logs exactly the block it counted.
+  void _mutateEngine(void Function() mutate) {
+    final before = _engine.state.phase;
+    mutate();
+    setState(() {});
+    if (before == PomodoroPhase.focus && _engine.state.phase != PomodoroPhase.focus) {
+      _closeRunnerSession();
+    }
+  }
+
+  Future<void> _closeRunnerSession() async {
+    if (!_runnerOpenedSession) return;
+    _runnerOpenedSession = false;
+    final time = await ref.read(timeRepositoryProvider.future);
+    final active = await time.activeSession();
+    if (active != null) await time.stopSession(active.id);
+    await _captureBase();
+    _invalidateTime(ref);
+  }
+
+  Future<void> _toggleFreeTimer(TimeSession? active) async {
+    final time = await ref.read(timeRepositoryProvider.future);
+    if (active != null && active.taskId == widget.task.id) {
+      await time.stopSession(active.id);
+      _runnerOpenedSession = false;
+    } else {
+      await time.startSession(widget.task.id);
+    }
+    await _captureBase();
+    _invalidateTime(ref);
+  }
+
+  Future<void> _startBlock(TimeSession? active) async {
+    final time = await ref.read(timeRepositoryProvider.future);
+    if (active == null || active.taskId != widget.task.id) {
+      await time.startSession(widget.task.id, isPomodoro: true);
+      _runnerOpenedSession = true;
+    }
+    _engine.start();
+    _startTicker();
+    setState(() {});
+    await _captureBase();
+    _invalidateTime(ref);
+  }
+
+  Future<void> _pauseBlock() async {
+    _engine.pause();
+    setState(() {});
+    await _closeRunnerSession();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final active = ref.watch(activeTimeSessionProvider).valueOrNull;
+    final isRunning = active?.taskId == widget.task.id;
+    final sessions = ref.watch(taskSessionsProvider(widget.task.id)).valueOrNull;
+    final engineState = _engine.state;
+    final liveExtra = isRunning
+        ? DateTime.now().toUtc().difference(_baseAt)
+        : Duration.zero;
+    final total = Duration(seconds: _baseSeconds) + liveExtra;
+
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.timer_outlined,
+                      size: 18, color: theme.colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Time on task',
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Close',
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                widget.task.title,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 18),
+              // Running total, advancing every second while a session is open.
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    formatTracked(total),
+                    key: const Key('task-time-total'),
+                    style: TextStyle(
+                      fontSize: 40,
+                      fontWeight: FontWeight.w800,
+                      height: 1,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      'logged',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _sessionSummary(sessions, isRunning),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 18),
+              isRunning
+                  ? TickingTimer(
+                      builder: (_) => FilledButton.icon(
+                        key: const Key('sheet-stop-timer'),
+                        onPressed: () => _toggleFreeTimer(active),
+                        icon: const Icon(Icons.stop_rounded, size: 18),
+                        label: const Text('Stop tracking'),
+                      ),
+                    )
+                  : FilledButton.icon(
+                      key: const Key('sheet-start-timer'),
+                      onPressed: () => _toggleFreeTimer(active),
+                      icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                      label: const Text('Start tracking'),
+                    ),
+              const SizedBox(height: 26),
+              const Divider(height: 1),
+              const SizedBox(height: 22),
+              _buildPomodoro(theme, active, isRunning, engineState),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _sessionSummary(List<TimeSession>? sessions, bool isRunning) {
+    if (sessions == null) return 'Loading sessions…';
+    final blocks = sessions.where((s) => s.isPomodoro).length;
+    if (sessions.isEmpty && !isRunning) return 'No sessions yet.';
+    final parts = <String>[
+      '${sessions.length} session${sessions.length == 1 ? '' : 's'}',
+      if (blocks > 0) '$blocks pomodoro',
+      if (isRunning) 'one running',
+    ];
+    return parts.join(' · ');
+  }
+
+  Widget _buildPomodoro(
+    ThemeData theme,
+    TimeSession? active,
+    bool isRunning,
+    PomodoroState state,
+  ) {
+    final finished = _engine.isFinished;
+    final accent = state.phase.isBreak
+        ? theme.colorScheme.secondary
+        : theme.colorScheme.primary;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Pomodoro',
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            if (state.phase != PomodoroPhase.finished)
+              Text(
+                'Round ${state.round}',
+                key: const Key('pomodoro-round'),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Center(
+          child: SizedBox(
+            width: 148,
+            height: 148,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox.expand(
+                  child: CircularProgressIndicator(
+                    value: finished
+                        ? 1
+                        : state.progress(_engine.currentPhaseDuration),
+                    strokeWidth: 7,
+                    backgroundColor:
+                        theme.colorScheme.surfaceContainerHighest,
+                    valueColor: AlwaysStoppedAnimation<Color>(accent),
+                  ),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      finished ? 'Done' : formatClock(state.remaining),
+                      key: const Key('pomodoro-clock'),
+                      style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w800,
+                        height: 1.1,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      state.phase.label,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: accent,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
+        Row(
+          children: [
+            if (state.isRunning)
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: const Key('pomodoro-pause'),
+                  onPressed: _pauseBlock,
+                  icon: const Icon(Icons.pause_rounded, size: 18),
+                  label: const Text('Pause'),
+                ),
+              )
+            else
+              Expanded(
+                child: FilledButton.icon(
+                  key: const Key('pomodoro-start'),
+                  onPressed: finished ? null : () => _startBlock(active),
+                  icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                  label: Text(finished ? 'Cycle done' : 'Start block'),
+                ),
+              ),
+            const SizedBox(width: 10),
+            IconButton.outlined(
+              key: const Key('pomodoro-skip'),
+              tooltip: 'Skip phase',
+              onPressed: finished
+                  ? null
+                  : () => _mutateEngine(_engine.skip),
+              icon: const Icon(Icons.skip_next_rounded, size: 20),
+            ),
+            const SizedBox(width: 10),
+            IconButton.outlined(
+              key: const Key('pomodoro-reset'),
+              tooltip: 'Reset cycle',
+              onPressed: () {
+                _ticker?.cancel();
+                _ticker = null;
+                _mutateEngine(_engine.reset);
+              },
+              icon: const Icon(Icons.refresh_rounded, size: 20),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Text(
+          isRunning
+              ? 'Time is being logged against this task while the block runs.'
+              : 'Starting a block also starts the timer; it stops when the '
+                  'block ends.',
+          style: TextStyle(
+            fontSize: 11,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
     );
   }
 }

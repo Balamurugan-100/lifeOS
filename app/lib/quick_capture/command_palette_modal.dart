@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lifeos_core/lifeos_core.dart';
 import 'package:lifeos_finance/lifeos_finance.dart';
-import 'package:lifeos_planner/lifeos_planner.dart';
 import 'package:lifeos_tasks/lifeos_tasks.dart';
 
 import '../app.dart';
@@ -52,7 +51,6 @@ class _CommandPaletteModalState extends ConsumerState<CommandPaletteModal> {
     if (text.isEmpty) return;
 
     setState(() => _isSaving = true);
-    final today = isoDate(todayLocal());
 
     try {
       if (_selectedMode == 'task') {
@@ -121,54 +119,25 @@ class _CommandPaletteModalState extends ConsumerState<CommandPaletteModal> {
             note: note.isEmpty ? 'Quick Expense' : note,
           );
         }
-      } else if (_selectedMode == 'block') {
-        final plannerRepo = await ref.read(plannerRepositoryProvider.future);
-        final now = DateTime.now();
-        final startMinute = (now.hour * 60) + now.minute;
-        var blockTitle = text;
-        var duration = 45;
-        var category = BlockCategory.focus;
-
-        // Parse duration e.g. 30m, 1h, 90m
-        final durMatch = RegExp(r'\b(\d+)\s*(m|min|mins|h|hr|hours?)\b', caseSensitive: false).firstMatch(blockTitle);
-        if (durMatch != null) {
-          final num = int.parse(durMatch.group(1)!);
-          final unit = durMatch.group(2)!.toLowerCase();
-          duration = unit.startsWith('h') ? num * 60 : num;
-          blockTitle = blockTitle.replaceRange(durMatch.start, durMatch.end, ' ').trim();
-        }
-
-        // Parse category e.g. @meeting, @health, @routine, @personal, @focus
-        final tagMatch = RegExp(r'[@#]([a-zA-Z0-9_\-]+)').firstMatch(blockTitle);
-        if (tagMatch != null) {
-          final tag = tagMatch.group(1)!.toLowerCase();
-          if (tag.contains('meet')) category = BlockCategory.meeting;
-          if (tag.contains('health') || tag.contains('gym')) category = BlockCategory.health;
-          if (tag.contains('routine')) category = BlockCategory.routine;
-          if (tag.contains('personal') || tag.contains('rest')) category = BlockCategory.personal;
-          blockTitle = blockTitle.replaceAll(tagMatch.group(0)!, '').trim();
-        }
-
-        await plannerRepo.createBlock(
-          title: blockTitle.isEmpty ? text : blockTitle,
-          date: today,
-          startMinute: startMinute,
-          durationMinutes: duration,
-          category: category,
-        );
-      } else if (_selectedMode == 'note') {
-        final noteRepo = await ref.read(notesRepositoryProvider.future);
-        final tags = <String>['quick-capture'];
-        final tagMatches = RegExp(r'[@#]([a-zA-Z0-9_\-]+)').allMatches(text);
-        for (final m in tagMatches) {
-          final t = m.group(1)!.toLowerCase();
-          if (!tags.contains(t)) tags.add(t);
-        }
-        await noteRepo.addNote(
-          id: newId(),
-          title: text.length > 30 ? text.substring(0, 30) : text,
-          content: text,
-          tags: tags,
+      } else if (_selectedMode == 'time') {
+        // "Ship the release @pomo" resolves to an existing task and starts
+        // tracking time against it, creating the task first when nothing
+        // matches. Time lives in the Tasks domain, so this only needs the
+        // task repository plus the time repository.
+        final taskRepo = await ref.read(taskRepositoryProvider.future);
+        final timeRepo = await ref.read(timeRepositoryProvider.future);
+        final asPomodoro = RegExp(r'[@#](pomo|pomodoro)\b', caseSensitive: false)
+            .hasMatch(text);
+        final cleanLabel = text
+            .replaceAll(RegExp(r'[@#](pomo|pomodoro)\b', caseSensitive: false), '')
+            .replaceAll(RegExp(r'[@#]([a-zA-Z0-9_\-]+)'), '')
+            .trim();
+        final target = await _resolveTask(taskRepo, text) ??
+            await taskRepo.add(const CommandParser().parseTask(text).cleanTitle);
+        await timeRepo.startSession(
+          target.id,
+          isPomodoro: asPomodoro,
+          label: cleanLabel.isEmpty ? null : cleanLabel,
         );
       }
 
@@ -178,7 +147,7 @@ class _CommandPaletteModalState extends ConsumerState<CommandPaletteModal> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('⚡ Captured to $_selectedMode!'),
-            backgroundColor: NeonPalette.mint,
+            backgroundColor: LifeOSPalette.sage,
             duration: const Duration(seconds: 2),
           ),
         );
@@ -187,10 +156,35 @@ class _CommandPaletteModalState extends ConsumerState<CommandPaletteModal> {
       if (mounted) {
         setState(() => _isSaving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error capturing: $e'), backgroundColor: NeonPalette.rose),
+          SnackBar(content: Text('Error capturing: $e'), backgroundColor: LifeOSPalette.rust),
         );
       }
     }
+  }
+
+  /// Finds the task a time-capture line refers to: an exact `@tag` match on
+  /// the task's category wins, then a title substring match, then — if the
+  /// input is bare — the single most recently created outstanding task.
+  Future<Task?> _resolveTask(TaskRepository repo, String text) async {
+    final tasks = await repo.all();
+    if (tasks.isEmpty) return null;
+
+    final tagMatch = RegExp(r'[@#]([a-zA-Z0-9_\-]+)').firstMatch(text);
+    if (tagMatch != null) {
+      final tag = tagMatch.group(1)!.toLowerCase();
+      for (final task in tasks) {
+        if ((task.category ?? '').toLowerCase() == tag) return task;
+      }
+    }
+
+    final needle = text.toLowerCase();
+    for (final task in tasks) {
+      if (task.title.toLowerCase().contains(needle)) return task;
+    }
+
+    final outstanding =
+        tasks.where((t) => !t.isCompleted).toList(growable: false);
+    return outstanding.isEmpty ? tasks.first : outstanding.first;
   }
 
   @override
@@ -204,12 +198,12 @@ class _CommandPaletteModalState extends ConsumerState<CommandPaletteModal> {
         color: isDark ? const Color(0xFF0B1120) : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         border: Border.all(
-          color: isDark ? NeonPalette.cyan.withValues(alpha: 0.3) : Colors.grey.shade300,
+          color: isDark ? LifeOSPalette.teal.withValues(alpha: 0.3) : Colors.grey.shade300,
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: NeonPalette.cyan.withValues(alpha: 0.15),
+            color: LifeOSPalette.teal.withValues(alpha: 0.15),
             blurRadius: 30,
             offset: const Offset(0, -8),
           ),
@@ -237,7 +231,7 @@ class _CommandPaletteModalState extends ConsumerState<CommandPaletteModal> {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.bolt, color: NeonPalette.cyan, size: 22),
+                  Icon(Icons.bolt, color: LifeOSPalette.teal, size: 22),
                   SizedBox(width: 8),
                   Text(
                     'QUICK COMMAND PALETTE',
@@ -245,7 +239,7 @@ class _CommandPaletteModalState extends ConsumerState<CommandPaletteModal> {
                       fontSize: 13,
                       fontWeight: FontWeight.w900,
                       letterSpacing: 1.2,
-                      color: NeonPalette.cyan,
+                      color: LifeOSPalette.teal,
                     ),
                   ),
                 ],
@@ -266,10 +260,9 @@ class _CommandPaletteModalState extends ConsumerState<CommandPaletteModal> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _buildModeChip('task', 'Task', Icons.checklist_rounded, NeonPalette.cyan),
-                _buildModeChip('expense', 'Expense (₹)', Icons.account_balance_wallet_rounded, NeonPalette.violet),
-                _buildModeChip('block', 'Time Block', Icons.calendar_today_rounded, NeonPalette.blue),
-                _buildModeChip('note', 'Quick Note', Icons.description_rounded, const Color(0xFF38BDF8)),
+                _buildModeChip('task', 'Task', Icons.checklist_rounded, LifeOSPalette.teal),
+                _buildModeChip('time', 'Track Time', Icons.timer_outlined, LifeOSPalette.slate),
+                _buildModeChip('expense', 'Expense (₹)', Icons.account_balance_wallet_rounded, LifeOSPalette.clay),
               ],
             ),
           ),
@@ -280,7 +273,7 @@ class _CommandPaletteModalState extends ConsumerState<CommandPaletteModal> {
               color: isDark ? const Color(0xFF1E293B) : Colors.grey.shade100,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isDark ? NeonPalette.borderDark : Colors.grey.shade300,
+                color: isDark ? LifeOSPalette.borderDark : Colors.grey.shade300,
               ),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
@@ -306,11 +299,11 @@ class _CommandPaletteModalState extends ConsumerState<CommandPaletteModal> {
                   const SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: NeonPalette.cyan),
+                    child: CircularProgressIndicator(strokeWidth: 2, color: LifeOSPalette.teal),
                   )
                 else
                   IconButton(
-                    icon: const Icon(Icons.arrow_upward_rounded, color: NeonPalette.cyan),
+                    icon: const Icon(Icons.arrow_upward_rounded, color: LifeOSPalette.teal),
                     onPressed: _executeCapture,
                   ),
               ],
@@ -328,7 +321,7 @@ class _CommandPaletteModalState extends ConsumerState<CommandPaletteModal> {
                 : _selectedMode == 'expense'
                     ? '💡 Tip: Enter amount first e.g. "500 Dinner with team @food"'
                     : _selectedMode == 'block'
-                        ? '💡 Tip: Try "Deep work 45m @focus" or "Team Sync 30m @meeting"'
+                        ? 'Tip: try "Ship release notes @pomo" to start tracking on that task'
                         : '💡 Instant offline capture into your LifeOS database',
             style: TextStyle(
               fontSize: 11,
@@ -372,21 +365,21 @@ class _CommandPaletteModalState extends ConsumerState<CommandPaletteModal> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: NeonPalette.mint.withValues(alpha: 0.15),
+                    color: LifeOSPalette.sage.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: NeonPalette.mint.withValues(alpha: 0.4)),
+                    border: Border.all(color: LifeOSPalette.sage.withValues(alpha: 0.4)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.event_available_rounded, size: 12, color: NeonPalette.mint),
+                      const Icon(Icons.event_available_rounded, size: 12, color: LifeOSPalette.sage),
                       const SizedBox(width: 4),
                       Text(
                         'Due: ${parsed.dueString ?? isoDate(parsed.dueDate!)}',
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: NeonPalette.mint,
+                          color: LifeOSPalette.sage,
                         ),
                       ),
                     ],
@@ -396,21 +389,21 @@ class _CommandPaletteModalState extends ConsumerState<CommandPaletteModal> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: NeonPalette.cyan.withValues(alpha: 0.15),
+                    color: LifeOSPalette.teal.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: NeonPalette.cyan.withValues(alpha: 0.4)),
+                    border: Border.all(color: LifeOSPalette.teal.withValues(alpha: 0.4)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.tag_rounded, size: 12, color: NeonPalette.cyan),
+                      const Icon(Icons.tag_rounded, size: 12, color: LifeOSPalette.teal),
                       const SizedBox(width: 3),
                       Text(
                         '@${parsed.category}',
                         style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: NeonPalette.cyan,
+                          color: LifeOSPalette.teal,
                         ),
                       ),
                     ],
@@ -421,17 +414,17 @@ class _CommandPaletteModalState extends ConsumerState<CommandPaletteModal> {
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: (parsed.priority == CommandPriority.urgent
-                            ? NeonPalette.rose
+                            ? LifeOSPalette.rust
                             : parsed.priority == CommandPriority.high
-                                ? NeonPalette.amber
+                                ? LifeOSPalette.sand
                                 : Colors.blueGrey)
                         .withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: (parsed.priority == CommandPriority.urgent
-                              ? NeonPalette.rose
+                              ? LifeOSPalette.rust
                               : parsed.priority == CommandPriority.high
-                                  ? NeonPalette.amber
+                                  ? LifeOSPalette.sand
                                   : Colors.blueGrey)
                           .withValues(alpha: 0.4),
                     ),
@@ -442,9 +435,9 @@ class _CommandPaletteModalState extends ConsumerState<CommandPaletteModal> {
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                       color: parsed.priority == CommandPriority.urgent
-                          ? NeonPalette.rose
+                          ? LifeOSPalette.rust
                           : parsed.priority == CommandPriority.high
-                              ? NeonPalette.amber
+                              ? LifeOSPalette.sand
                               : Colors.blueGrey,
                     ),
                   ),
@@ -495,8 +488,7 @@ class _CommandPaletteModalState extends ConsumerState<CommandPaletteModal> {
     return switch (_selectedMode) {
       'task' => 'Fix the iOS issue by today @ios !p1',
       'expense' => '₹250 Lunch with team @food',
-      'block' => 'Schedule block... (e.g. Core Engine 45m @focus)',
-      'note' => 'Jot thought... (e.g. Architecture plan @v2)',
+      'time' => 'Start the timer on a task... (e.g. Release notes @pomo)',
       _ => 'Type anything...',
     };
   }

@@ -82,7 +82,7 @@ packages:
     source: hosted
     version: "3.0.7"
   drift:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: drift
       sha256: e3b6352aa02e60bed6ffc3cc9894c421578dad5fbef21b1f7f57cdc0e4edabcb
@@ -222,66 +222,10 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
-  lifeos_focus:
-    dependency: "direct main"
-    description:
-      path: "../domains/focus"
-      relative: true
-    source: path
-    version: "0.1.0"
-  lifeos_gamification:
-    dependency: "direct main"
-    description:
-      path: "../domains/gamification"
-      relative: true
-    source: path
-    version: "0.1.0"
-  lifeos_goals:
-    dependency: "direct main"
-    description:
-      path: "../domains/goals"
-      relative: true
-    source: path
-    version: "0.1.0"
   lifeos_habits:
     dependency: "direct main"
     description:
       path: "../domains/habits"
-      relative: true
-    source: path
-    version: "0.1.0"
-  lifeos_journal:
-    dependency: "direct main"
-    description:
-      path: "../domains/journal"
-      relative: true
-    source: path
-    version: "0.1.0"
-  lifeos_notes:
-    dependency: "direct main"
-    description:
-      path: "../domains/notes"
-      relative: true
-    source: path
-    version: "0.1.0"
-  lifeos_planner:
-    dependency: "direct main"
-    description:
-      path: "../domains/planner"
-      relative: true
-    source: path
-    version: "0.1.0"
-  lifeos_review:
-    dependency: "direct main"
-    description:
-      path: "../domains/review"
-      relative: true
-    source: path
-    version: "0.1.0"
-  lifeos_rituals:
-    dependency: "direct main"
-    description:
-      path: "../domains/rituals"
       relative: true
     source: path
     version: "0.1.0"
@@ -296,13 +240,6 @@ packages:
     dependency: "direct main"
     description:
       path: "../domains/tasks"
-      relative: true
-    source: path
-    version: "0.1.0"
-  lifeos_wellness:
-    dependency: "direct main"
-    description:
-      path: "../domains/wellness"
       relative: true
     source: path
     version: "0.1.0"

@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lifeos_app/app.dart';
 import 'package:lifeos_app/bootstrap/registry.dart';
 import 'package:lifeos_app/home/home_controller.dart';
+import 'package:lifeos_app/navigation/finance_screen.dart';
+import 'package:lifeos_app/navigation/habit_screen.dart';
 import 'package:lifeos_app/navigation/task_screen.dart';
 import 'package:lifeos_core/lifeos_core.dart';
 import 'package:lifeos_storage/lifeos_storage.dart';
@@ -12,13 +14,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 DomainSummary _tasksSummary({
   List<HighlightedItem> highlighted = const [],
+  Map<String, int> counts = const {'outstanding': 2, 'overdue': 1},
 }) =>
     DomainSummary(
       domainKey: 'tasks',
       displayName: 'Tasks',
-      counts: const {'outstanding': 2, 'overdue': 1},
+      counts: counts,
       highlighted: highlighted,
       refreshedAt: DateTime.now().toUtc(),
+    );
+
+DomainSummary _habitsSummary() => DomainSummary(
+      domainKey: 'habits',
+      displayName: 'Habits',
+      counts: const {'doneToday': 1},
+      highlighted: const [],
+      refreshedAt: DateTime(2026, 9, 22),
     );
 
 const _overdueItem = HighlightedItem(
@@ -63,7 +74,11 @@ class _FakeModule extends ModuleDescriptor {
   }
 }
 
-Widget _app({QueryExecutor? executor, ModuleRegistry? registry, List<DomainSummary>? summaries}) {
+Widget _app({
+  QueryExecutor? executor,
+  ModuleRegistry? registry,
+  List<DomainSummary>? summaries,
+}) {
   return ProviderScope(
     overrides: [
       databaseExecutorProvider
@@ -77,6 +92,13 @@ Widget _app({QueryExecutor? executor, ModuleRegistry? registry, List<DomainSumma
   );
 }
 
+void _usePhoneSize(WidgetTester tester) {
+  tester.view.physicalSize = const Size(1080, 2400);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+}
+
 void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
@@ -84,40 +106,37 @@ void main() {
 
   testWidgets('T020: home shows empty state when no domain has data (FR-004)',
       (tester) async {
+    _usePhoneSize(tester);
+
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('emptystate')), findsOneWidget);
     expect(find.byKey(const Key('openTasks')), findsOneWidget);
     expect(find.byKey(const Key('openHabits')), findsOneWidget);
+    expect(find.byKey(const Key('openFinance')), findsOneWidget);
     expect(find.text('Your LifeOS is ready'), findsOneWidget);
   });
 
   testWidgets(
       'T021: summary cards render from DomainSummary fixtures (FR-001, FR-007)',
       (tester) async {
-    tester.view.physicalSize = const Size(1080, 2400);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+    _usePhoneSize(tester);
 
     await tester.pumpWidget(_app(summaries: [
       _tasksSummary(highlighted: const [_overdueItem]),
-      DomainSummary(
-        domainKey: 'habits',
-        displayName: 'Habits',
-        counts: const {'doneToday': 1},
-        highlighted: const [],
-        refreshedAt: DateTime(2026, 9, 22),
-      ),
+      _habitsSummary(),
     ]));
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('summary-tasks')), findsOneWidget);
+    expect(find.byKey(const Key('summary-habits')), findsOneWidget);
     expect(find.text('Tasks'), findsWidgets);
     expect(find.text('2 outstanding'), findsOneWidget);
     expect(find.text('1 overdue'), findsOneWidget);
-    expect(find.text('1 doneToday'), findsOneWidget);
+    // Count pills are labelled for humans, not by internal key.
+    expect(find.text('1 done today'), findsOneWidget);
+    expect(find.text('1 doneToday'), findsNothing);
     expect(find.text('Fix the bug'), findsOneWidget);
     expect(find.text('Due 2026-09-20'), findsOneWidget);
   });
@@ -125,10 +144,7 @@ void main() {
   testWidgets(
       'T022: highlighted complete action runs without leaving home (SC-007)',
       (tester) async {
-    tester.view.physicalSize = const Size(1080, 2400);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+    _usePhoneSize(tester);
 
     final fake = _FakeModule('tasks', 'Tasks',
         summaries: () => [_tasksSummary(highlighted: const [_overdueItem])]);
@@ -150,10 +166,7 @@ void main() {
 
   testWidgets('T023: home refreshes on return to home (FR-003, SC-002)',
       (tester) async {
-    tester.view.physicalSize = const Size(1080, 2400);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+    _usePhoneSize(tester);
 
     final fake = _FakeModule('tasks', 'Tasks',
         summaries: () => [_tasksSummary(highlighted: const [_overdueItem])]);
@@ -163,9 +176,11 @@ void main() {
     await tester.pumpAndSettle();
     final before = fake.buildCount;
 
-    await tester.tap(find.byKey(const Key('open-tasks')));
+    // Push a route off home, then come back: `didPopNext` must re-ask the
+    // registry for summaries.
+    await tester.tap(find.byKey(const Key('openExport')));
     await tester.pumpAndSettle();
-    expect(find.byType(TaskScreen), findsOneWidget);
+    expect(find.byType(TaskScreen), findsNothing);
 
     await tester.pageBack();
     await tester.pumpAndSettle();
@@ -173,49 +188,84 @@ void main() {
     expect(fake.buildCount, greaterThan(before));
   });
 
-  testWidgets('T024: Dynamic dashboard switches between morning routines, afternoon focus, and night reflection',
+  testWidgets('T024: tracked time today is surfaced on the home overview',
       (tester) async {
-    tester.view.physicalSize = const Size(1080, 2400);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+    _usePhoneSize(tester);
 
     await tester.pumpWidget(_app(summaries: [
-      _tasksSummary(highlighted: const [_overdueItem]),
-      DomainSummary(
-        domainKey: 'habits',
-        displayName: 'Habits',
-        counts: const {'doneToday': 1},
-        highlighted: const [],
-        refreshedAt: DateTime(2026, 9, 22),
-      ),
+      _tasksSummary(counts: const {
+        'outstanding': 2,
+        'overdue': 1,
+        'trackedMinutes': 45,
+        'trackedSessions': 3,
+      }),
     ]));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('dynamic-context-card')), findsOneWidget);
+    expect(find.byKey(const Key('today-time-card')), findsOneWidget);
+    expect(find.text('Tracked today'), findsOneWidget);
+    expect(find.text('45 min across 3 sessions'), findsOneWidget);
+    // The same figures also appear as a labelled count pill on the card.
+    expect(find.text('45 min tracked'), findsOneWidget);
+  });
 
-    // Switch to Morning
-    await tester.tap(find.byKey(const Key('period-chip-morning')));
-    await tester.pumpAndSettle();
-    expect(find.text('Morning Launchpad'), findsOneWidget);
-    expect(find.text('💧 Hydrate (500ml) & Quick Stretch'), findsOneWidget);
+  testWidgets('T025: no tracked time reads as an invitation, not a zero',
+      (tester) async {
+    _usePhoneSize(tester);
 
-    // Switch to Afternoon
-    await tester.tap(find.byKey(const Key('period-chip-afternoon')));
+    await tester.pumpWidget(_app(summaries: [_tasksSummary()]));
     await tester.pumpAndSettle();
-    expect(find.text('Afternoon Execution'), findsOneWidget);
-    expect(find.text('Launch Pomodoro'), findsOneWidget);
 
-    // Switch to Night
-    await tester.tap(find.byKey(const Key('period-chip-night')));
-    await tester.pumpAndSettle();
-    expect(find.text('Night Reflection & Wind-down'), findsOneWidget);
-    expect(find.byKey(const Key('night-reflection-input')), findsOneWidget);
-    expect(find.byKey(const Key('save-night-reflection-btn')), findsOneWidget);
+    expect(find.byKey(const Key('today-time-value')), findsOneWidget);
+    expect(find.text('No time logged yet'), findsOneWidget);
+  });
 
-    // Enter reflection and save
-    await tester.enterText(find.byKey(const Key('night-reflection-input')), 'Shipped major improvements today!');
-    await tester.tap(find.byKey(const Key('save-night-reflection-btn')));
+  testWidgets('T026: bottom bar switches between the three core domains',
+      (tester) async {
+    _usePhoneSize(tester);
+
+    await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('emptystate')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('nav-tasks')));
+    await tester.pumpAndSettle();
+    expect(find.byType(TaskScreen), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('nav-habits')));
+    await tester.pumpAndSettle();
+    expect(find.byType(HabitScreen), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('nav-finance')));
+    await tester.pumpAndSettle();
+    expect(find.byType(FinanceScreen), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('nav-today')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('emptystate')), findsOneWidget);
+  });
+
+  testWidgets('T027: tapping a summary card switches to that domain tab',
+      (tester) async {
+    _usePhoneSize(tester);
+
+    await tester.pumpWidget(_app(summaries: [
+      _tasksSummary(highlighted: const [_overdueItem]),
+      _habitsSummary(),
+    ]));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('open-habits')));
+    await tester.pumpAndSettle();
+
+    // The card hands off to the tab, it does not push a route — so home keeps
+    // its place in the bottom bar and no back button is introduced.
+    expect(find.byType(HabitScreen), findsOneWidget);
+    expect(find.byType(TaskScreen), findsNothing);
+
+    await tester.tap(find.byKey(const Key('nav-today')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('summary-tasks')), findsOneWidget);
   });
 }

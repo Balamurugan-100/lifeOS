@@ -4,7 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lifeos_app/app.dart';
 import 'package:lifeos_app/bootstrap/registry.dart';
 import 'package:lifeos_core/lifeos_core.dart';
+import 'package:lifeos_finance/lifeos_finance.dart';
+import 'package:lifeos_habits/lifeos_habits.dart';
 import 'package:lifeos_storage/lifeos_storage.dart';
+import 'package:lifeos_tasks/lifeos_tasks.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Pumps the real app with a configurable backing executor and registry.
@@ -30,6 +33,24 @@ Future<void> pumpLifeOSApp(
     ),
   );
   await tester.pumpAndSettle();
+}
+
+/// The three core domain databases over [executor], with their tables
+/// created.
+///
+/// The app's providers call `ensureTables()` at startup, so a test that only
+/// pumps the app never has to. Tests that *seed* data before pumping build
+/// their own databases and must do the same — otherwise the first insert
+/// fails with `no such table`.
+Future<({TaskDatabase tasks, HabitDatabase habits, FinanceDatabase finance})>
+    createCoreDatabases(QueryExecutor executor) async {
+  final tasks = TaskDatabase(executor);
+  final habits = HabitDatabase(executor);
+  final finance = FinanceDatabase(executor);
+  await tasks.ensureTables();
+  await habits.ensureTables();
+  await finance.ensureTables();
+  return (tasks: tasks, habits: habits, finance: finance);
 }
 
 /// A third-party module used by the extensibility test (T062) — registered

@@ -25,19 +25,13 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
     final tasks = await ref.read(taskRepositoryProvider.future);
     final habits = await ref.read(habitRepositoryProvider.future);
     final finance = await ref.read(financeRepositoryProvider.future);
-    final journal = await ref.read(journalRepositoryProvider.future);
-    final focus = await ref.read(focusRepositoryProvider.future);
-    final goals = await ref.read(goalRepositoryProvider.future);
-    final notes = await ref.read(notesRepositoryProvider.future);
+    final time = await ref.read(timeRepositoryProvider.future);
 
     return LifeOSExporter(
       tasks: tasks,
       habits: habits,
       finance: finance,
-      journal: journal,
-      focus: focus,
-      goals: goals,
-      notes: notes,
+      time: time,
     );
   }
 
@@ -52,7 +46,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text('Full backup written to ${target.path}'),
-          backgroundColor: NeonPalette.cyan,
+          backgroundColor: LifeOSPalette.teal,
         ),
       );
       await shareExportFile(target);
@@ -60,14 +54,14 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text('Export failed — please retry: $error'),
-          backgroundColor: NeonPalette.rose,
+          backgroundColor: LifeOSPalette.rust,
         ),
       );
     } catch (e) {
       messenger.showSnackBar(
         SnackBar(
           content: Text('Export error: $e'),
-          backgroundColor: NeonPalette.rose,
+          backgroundColor: LifeOSPalette.rust,
         ),
       );
     }
@@ -92,7 +86,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text('Daily digest ($ext) saved to ${target.path}'),
-          backgroundColor: NeonPalette.mint,
+          backgroundColor: LifeOSPalette.sage,
         ),
       );
       await shareExportFile(target);
@@ -100,14 +94,14 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text('Daily export failed: $error'),
-          backgroundColor: NeonPalette.rose,
+          backgroundColor: LifeOSPalette.rust,
         ),
       );
     } catch (e) {
       messenger.showSnackBar(
         SnackBar(
           content: Text('Export error: $e'),
-          backgroundColor: NeonPalette.rose,
+          backgroundColor: LifeOSPalette.rust,
         ),
       );
     }
@@ -133,10 +127,10 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
               side: BorderSide(
-                color: isDark ? NeonPalette.borderDark : Colors.grey.shade300,
+                color: isDark ? LifeOSPalette.borderDark : Colors.grey.shade300,
               ),
             ),
-            color: isDark ? NeonPalette.surfaceCard : Colors.white,
+            color: isDark ? LifeOSPalette.surfaceCard : Colors.white,
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -147,11 +141,11 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: NeonPalette.mint.withValues(alpha: 0.15),
+                          color: LifeOSPalette.sage.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(Icons.today,
-                            color: NeonPalette.mint, size: 24),
+                            color: LifeOSPalette.sage, size: 24),
                       ),
                       const SizedBox(width: 14),
                       const Expanded(
@@ -223,10 +217,10 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       ChoiceChip(
                         label: const Text('Markdown (.md)'),
                         selected: _dailyAsMarkdown,
-                        selectedColor: NeonPalette.mint.withValues(alpha: 0.25),
+                        selectedColor: LifeOSPalette.sage.withValues(alpha: 0.25),
                         labelStyle: TextStyle(
                           color: _dailyAsMarkdown
-                              ? NeonPalette.mint
+                              ? LifeOSPalette.sage
                               : (isDark ? Colors.white70 : Colors.black87),
                           fontWeight: _dailyAsMarkdown
                               ? FontWeight.bold
@@ -240,10 +234,10 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       ChoiceChip(
                         label: const Text('JSON (.json)'),
                         selected: !_dailyAsMarkdown,
-                        selectedColor: NeonPalette.cyan.withValues(alpha: 0.25),
+                        selectedColor: LifeOSPalette.teal.withValues(alpha: 0.25),
                         labelStyle: TextStyle(
                           color: !_dailyAsMarkdown
-                              ? NeonPalette.cyan
+                              ? LifeOSPalette.teal
                               : (isDark ? Colors.white70 : Colors.black87),
                           fontWeight: !_dailyAsMarkdown
                               ? FontWeight.bold
@@ -262,7 +256,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       key: const Key('exportDailyButton'),
                       onPressed: () => _exportDailyDigest(context),
                       style: FilledButton.styleFrom(
-                        backgroundColor: NeonPalette.mint,
+                        backgroundColor: LifeOSPalette.sage,
                         foregroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -288,10 +282,10 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
               side: BorderSide(
-                color: isDark ? NeonPalette.borderDark : Colors.grey.shade300,
+                color: isDark ? LifeOSPalette.borderDark : Colors.grey.shade300,
               ),
             ),
-            color: isDark ? NeonPalette.surfaceCard : Colors.white,
+            color: isDark ? LifeOSPalette.surfaceCard : Colors.white,
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -302,11 +296,11 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: NeonPalette.cyan.withValues(alpha: 0.15),
+                          color: LifeOSPalette.teal.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(Icons.cloud_download,
-                            color: NeonPalette.cyan, size: 24),
+                            color: LifeOSPalette.teal, size: 24),
                       ),
                       const SizedBox(width: 14),
                       const Expanded(
@@ -342,7 +336,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
                       key: const Key('exportNow'),
                       onPressed: () => _exportFullBackup(context),
                       style: FilledButton.styleFrom(
-                        backgroundColor: NeonPalette.cyan,
+                        backgroundColor: LifeOSPalette.teal,
                         foregroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(

@@ -15,14 +15,13 @@ void main() {
   testWidgets('home renders 1000 tasks + 500 entries in under 1s (SC-006)',
       (tester) async {
     final executor = openInMemoryExecutor();
-    final taskDb = TaskDatabase(executor);
-    final habitDb = HabitDatabase(executor);
+    final dbs = await createCoreDatabases(executor);
     addTearDown(() async {
-      await taskDb.close();
-      await habitDb.close();
+      await dbs.tasks.close();
+      await dbs.habits.close();
     });
-    final tasks = TaskRepository(taskDb);
-    final habits = HabitRepository(habitDb);
+    final tasks = TaskRepository(dbs.tasks);
+    final habits = HabitRepository(dbs.habits);
 
     for (var i = 0; i < 1000; i++) {
       final dated = i % 4 == 0;
@@ -49,14 +48,13 @@ void main() {
 
   test('summary derivation stays fast at volume', () async {
     final executor = openInMemoryExecutor();
-    final taskDb = TaskDatabase(executor);
-    final habitDb = HabitDatabase(executor);
+    final dbs = await createCoreDatabases(executor);
     addTearDown(() async {
-      await taskDb.close();
-      await habitDb.close();
+      await dbs.tasks.close();
+      await dbs.habits.close();
     });
-    final tasks = TaskRepository(taskDb);
-    final habits = HabitRepository(habitDb);
+    final tasks = TaskRepository(dbs.tasks);
+    final habits = HabitRepository(dbs.habits);
     for (var i = 0; i < 1000; i++) {
       await tasks.add('Task $i');
     }

@@ -1,90 +1,78 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:lifeos_app/app.dart';
-import 'package:lifeos_app/bootstrap/registry.dart';
-import 'package:lifeos_app/home/home_controller.dart';
+import 'package:lifeos_finance/lifeos_finance.dart';
 import 'package:lifeos_habits/lifeos_habits.dart';
 import 'package:lifeos_storage/lifeos_storage.dart';
 import 'package:lifeos_tasks/lifeos_tasks.dart';
 
 import 'helpers.dart';
 
-/// US5 lifecycle (T061, FR-005, SC-003): disabling a module removes it from
-/// home but keeps its data; re-enabling restores the summary exactly.
+/// US5 lifecycle (T061, FR-005): the three core domains register as modules,
+/// publish a `DomainSummary`, and light up on home with no per-domain wiring.
+/// Time tracking is part of the Tasks module, so it reaches home through the
+/// Tasks counts rather than a module of its own.
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('disable → absent from home with data retained → re-enable',
+  testWidgets('all three core domains appear on home with their own counts',
       (tester) async {
     final executor = openInMemoryExecutor();
-    final taskDb = TaskDatabase(executor);
-    final habitDb = HabitDatabase(executor);
+    final dbs = await createCoreDatabases(executor);
     addTearDown(() async {
-      await taskDb.close();
-      await habitDb.close();
+      await dbs.tasks.close();
+      await dbs.habits.close();
+      await dbs.finance.close();
     });
-    await TaskRepository(taskDb).add('Task data A');
-    await HabitRepository(habitDb).define('Habit data B');
+
+    await TaskRepository(dbs.tasks).add('Task data A');
+    await HabitRepository(dbs.habits).define('Habit data B');
+    await FinanceRepository(dbs.finance)
+        .addAccount(name: 'Salary account', type: AccountType.bank);
 
     await pumpLifeOSApp(tester, executor: executor);
-    expect(find.byKey(const Key('summary-tasks')), findsOneWidget);
-    expect(find.byKey(const Key('summary-habits')), findsOneWidget);
-
-    final container =
-        ProviderScope.containerOf(tester.element(find.byType(LifeOSApp)));
-
-    // Disable Tasks.
-    var registry = await container.read(moduleRegistryProvider.future);
-    await registry.setEnabled('tasks', false);
-    container.invalidate(moduleRegistryProvider);
-    container.invalidate(summariesProvider);
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const Key('summary-tasks')), findsNothing);
-    expect(find.byKey(const Key('summary-habits')), findsOneWidget);
-
-    // Data was retained (disable != delete).
-    expect(await TaskRepository(taskDb).all(), hasLength(1));
-
-    // Re-enable: the summary comes back exactly.
-    registry = await container.read(moduleRegistryProvider.future);
-    await registry.setEnabled('tasks', true);
-    container.invalidate(moduleRegistryProvider);
-    container.invalidate(summariesProvider);
-    await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('summary-tasks')), findsOneWidget);
+    expect(find.byKey(const Key('summary-habits')), findsOneWidget);
+    expect(find.byKey(const Key('summary-finance')), findsOneWidget);
     expect(find.text('1 outstanding'), findsOneWidget);
-    expect(find.byKey(const Key('summary-habits')), findsOneWidget);
+    expect(find.text('1 accounts'), findsOneWidget);
   });
 
-  testWidgets('settings screen toggles modules', (tester) async {
+  testWidgets('an empty install shows the empty state, not empty cards',
+      (tester) async {
     final executor = openInMemoryExecutor();
-    final taskDb = TaskDatabase(executor);
-    final habitDb = HabitDatabase(executor);
-    addTearDown(() async {
-      await taskDb.close();
-      await habitDb.close();
-    });
-    await TaskRepository(taskDb).add('Keep me');
+    addTearDown(() => executor.close());
 
     await pumpLifeOSApp(tester, executor: executor);
-    await tester.tap(find.byKey(const Key('openSettings')));
-    await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('module-tasks')), findsOneWidget);
-    expect(find.byKey(const Key('module-habits')), findsOneWidget);
-
-    // Toggle Tasks off from the settings screen.
-    await tester.tap(find.byKey(const Key('module-tasks')));
-    await tester.pumpAndSettle();
-
-    // Back on home, the Tasks summary is gone but data remains.
-    await tester.pageBack();
-    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('emptystate')), findsOneWidget);
     expect(find.byKey(const Key('summary-tasks')), findsNothing);
-    expect(await TaskRepository(taskDb).all(), hasLength(1));
+    expect(find.byKey(const Key('summary-habits')), findsNothing);
+    expect(find.byKey(const Key('summary-finance')), findsNothing);
+  });
+
+  testWidgets('tracked time rides along with the Tasks summary',
+      (tester) async {
+    final executor = openInMemoryExecutor();
+    final dbs = await createCoreDatabases(executor);
+    addTearDown(() async {
+      await dbs.tasks.close();
+      await executor.close();
+    });
+
+    final tasks = TaskRepository(dbs.tasks);
+    final time = TimeRepository(dbs.tasks);
+    final task = await tasks.add('Write the spec');
+    await time.startSession(task.id);
+    await time.stopSession((await time.activeSession())!.id);
+
+    await pumpLifeOSApp(tester, executor: executor);
+
+    expect(find.byKey(const Key('today-time-card')), findsOneWidget);
+    expect(find.byKey(const Key('summary-tasks')), findsOneWidget);
+    // The pill is labelled for humans rather than leaking `trackedMinutes`.
+    expect(find.text('0 min tracked'), findsNothing);
+    expect(find.text('0 sec tracked'), findsNothing);
   });
 }

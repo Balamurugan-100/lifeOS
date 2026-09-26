@@ -70,7 +70,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         ],
       ),
       body: schedulesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator(color: NeonPalette.cyan)),
+        loading: () => const Center(child: CircularProgressIndicator(color: LifeOSPalette.teal)),
         error: (err, _) => Center(child: Text('Error: $err')),
         data: (items) {
           return ListView(
@@ -82,17 +82,17 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF0F172A) : Colors.cyan.shade50,
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: NeonPalette.cyan.withValues(alpha: 0.3)),
+                  border: Border.all(color: LifeOSPalette.teal.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: NeonPalette.cyan.withValues(alpha: 0.15),
+                        color: LifeOSPalette.teal.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.schedule_rounded, color: NeonPalette.cyan, size: 24),
+                      child: const Icon(Icons.schedule_rounded, color: LifeOSPalette.teal, size: 24),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -105,7 +105,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Configure the exact time you want push reminders for routines, habits, tasks, focus, and night reflections.',
+                            'Configure the exact time you want reminders for tasks, time tracking, and habit check-ins.',
                             style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : Colors.black54),
                           ),
                         ],
@@ -131,11 +131,11 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: isDark ? NeonPalette.surfaceCard : Colors.white,
+        color: isDark ? LifeOSPalette.surfaceCard : Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: item.isEnabled
-              ? (isDark ? NeonPalette.borderDark : Colors.grey.shade300)
+              ? (isDark ? LifeOSPalette.borderDark : Colors.grey.shade300)
               : (isDark ? Colors.white10 : Colors.grey.shade200),
         ),
       ),
@@ -152,10 +152,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: NeonPalette.cyan.withValues(alpha: 0.12),
+                          color: LifeOSPalette.teal.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(item.iconData, size: 20, color: NeonPalette.cyan),
+                        child: Icon(item.iconData, size: 20, color: LifeOSPalette.teal),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -187,7 +187,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                 ),
                 Switch(
                   value: item.isEnabled,
-                  activeTrackColor: NeonPalette.cyan.withValues(alpha: 0.6),
+                  activeTrackColor: LifeOSPalette.teal.withValues(alpha: 0.6),
                   onChanged: (val) => _toggleEnabled(item, val),
                 ),
               ],
@@ -206,16 +206,16 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                     decoration: BoxDecoration(
                       color: isDark ? const Color(0xFF1E293B) : Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: NeonPalette.cyan.withValues(alpha: 0.3)),
+                      border: Border.all(color: LifeOSPalette.teal.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.access_time_filled_rounded, size: 14, color: NeonPalette.cyan),
+                        const Icon(Icons.access_time_filled_rounded, size: 14, color: LifeOSPalette.teal),
                         const SizedBox(width: 6),
                         Text(
                           item.formattedTime,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: NeonPalette.cyan),
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: LifeOSPalette.teal),
                         ),
                         const SizedBox(width: 4),
                         const Icon(Icons.edit, size: 11, color: Colors.grey),
