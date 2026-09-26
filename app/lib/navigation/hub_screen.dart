@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../bootstrap/registry_settings.dart';
 import '../security/pin_dialog.dart';
 import '../security/vault_service.dart';
+import '../security/vault_settings_screen.dart';
 import '../theme/theme_controller.dart';
 import 'analytics_screen.dart';
 import 'export_screen.dart';
@@ -11,6 +12,7 @@ import 'focus_screen.dart';
 import 'goal_screen.dart';
 import 'journal_screen.dart';
 import 'notes_screen.dart';
+import 'notifications_screen.dart';
 import 'planner_screen.dart';
 import 'review_screen.dart';
 import 'rituals_screen.dart';
@@ -57,7 +59,7 @@ class HubScreen extends ConsumerWidget {
       const _HubItem(
         key: 'wellness',
         title: 'Sleep & Energy',
-        subtitle: 'Biomarkers, sleep & vitality tracking',
+        subtitle: 'Bedtime, wake schedule & vitality',
         icon: Icons.battery_charging_full_rounded,
         color: NeonPalette.mint,
         screen: WellnessScreen(),
@@ -110,24 +112,21 @@ class HubScreen extends ConsumerWidget {
         color: NeonPalette.mint,
         screen: AnalyticsScreen(),
       ),
-      _HubItem(
+      const _HubItem(
+        key: 'notifications',
+        title: 'Notifications & Alerts',
+        subtitle: 'Scheduled push nudges & cues',
+        icon: Icons.notifications_active_outlined,
+        color: NeonPalette.cyan,
+        screen: NotificationsScreen(),
+      ),
+      const _HubItem(
         key: 'vault',
         title: 'Private Vault',
-        subtitle: 'PIN security for sensitive domains',
+        subtitle: 'PIN security & reset controls',
         icon: Icons.lock_outline_rounded,
         color: NeonPalette.rose,
-        onTap: () async {
-          final vaultService = ref.read(vaultServiceProvider);
-          final hasPin = await vaultService.hasPin();
-          if (context.mounted) {
-            await PinDialog.show(
-              context,
-              vaultService,
-              'Vault Settings',
-              isSettingPin: !hasPin,
-            );
-          }
-        },
+        screen: VaultSettingsScreen(),
       ),
       const _HubItem(
         key: 'export',
@@ -187,9 +186,7 @@ class HubScreen extends ConsumerWidget {
               child: InkWell(
                 borderRadius: BorderRadius.circular(18),
                 onTap: () {
-                  if (item.onTap != null) {
-                    item.onTap!();
-                  } else if (item.screen != null) {
+                  if (item.screen != null) {
                     _openDomain(context, ref, item.key, item.title, item.screen!);
                   }
                 },
@@ -253,7 +250,6 @@ class _HubItem {
     required this.icon,
     required this.color,
     this.screen,
-    this.onTap,
   });
 
   final String key;
@@ -262,5 +258,4 @@ class _HubItem {
   final IconData icon;
   final Color color;
   final Widget? screen;
-  final VoidCallback? onTap;
 }

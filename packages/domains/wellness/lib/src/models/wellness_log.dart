@@ -2,6 +2,8 @@ class WellnessLog {
   const WellnessLog({
     required this.id,
     required this.date,
+    this.bedtime,
+    this.wakeTime,
     this.sleepDurationMinutes = 420, // 7 hours default
     this.sleepQualityScore = 4, // 1 to 5
     this.energyScore = 4, // 1 to 5
@@ -15,6 +17,8 @@ class WellnessLog {
 
   final String id;
   final String date;
+  final String? bedtime; // e.g. "23:00"
+  final String? wakeTime; // e.g. "07:00"
   final int sleepDurationMinutes;
   final int sleepQualityScore;
   final int energyScore;
@@ -53,6 +57,8 @@ class WellnessLog {
   WellnessLog copyWith({
     String? id,
     String? date,
+    String? bedtime,
+    String? wakeTime,
     int? sleepDurationMinutes,
     int? sleepQualityScore,
     int? energyScore,
@@ -66,6 +72,8 @@ class WellnessLog {
     return WellnessLog(
       id: id ?? this.id,
       date: date ?? this.date,
+      bedtime: bedtime ?? this.bedtime,
+      wakeTime: wakeTime ?? this.wakeTime,
       sleepDurationMinutes: sleepDurationMinutes ?? this.sleepDurationMinutes,
       sleepQualityScore: sleepQualityScore ?? this.sleepQualityScore,
       energyScore: energyScore ?? this.energyScore,

@@ -44,6 +44,13 @@ class VaultService {
     await prefs.setBool(_kEnabled, false);
   }
 
+  Future<void> resetPin() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kPinHash);
+    await prefs.setBool(_kEnabled, false);
+    await prefs.remove(_kLockedDomains);
+  }
+
   Future<bool> isDomainLocked(String domainKey) async {
     final enabled = await isVaultEnabled();
     if (!enabled) return false;

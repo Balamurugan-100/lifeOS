@@ -6,6 +6,8 @@ part 'wellness_database.g.dart';
 class WellnessLogs extends Table {
   TextColumn get id => text()();
   TextColumn get date => text()();
+  TextColumn get bedtime => text().nullable()();
+  TextColumn get wakeTime => text().nullable()();
   IntColumn get sleepDurationMinutes => integer().withDefault(const Constant(420))();
   IntColumn get sleepQualityScore => integer().withDefault(const Constant(4))();
   IntColumn get energyScore => integer().withDefault(const Constant(4))();

@@ -172,4 +172,50 @@ void main() {
 
     expect(fake.buildCount, greaterThan(before));
   });
+
+  testWidgets('T024: Dynamic dashboard switches between morning routines, afternoon focus, and night reflection',
+      (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(_app(summaries: [
+      _tasksSummary(highlighted: const [_overdueItem]),
+      DomainSummary(
+        domainKey: 'habits',
+        displayName: 'Habits',
+        counts: const {'doneToday': 1},
+        highlighted: const [],
+        refreshedAt: DateTime(2026, 9, 22),
+      ),
+    ]));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('dynamic-context-card')), findsOneWidget);
+
+    // Switch to Morning
+    await tester.tap(find.byKey(const Key('period-chip-morning')));
+    await tester.pumpAndSettle();
+    expect(find.text('Morning Launchpad'), findsOneWidget);
+    expect(find.text('💧 Hydrate (500ml) & Quick Stretch'), findsOneWidget);
+
+    // Switch to Afternoon
+    await tester.tap(find.byKey(const Key('period-chip-afternoon')));
+    await tester.pumpAndSettle();
+    expect(find.text('Afternoon Execution'), findsOneWidget);
+    expect(find.text('Launch Pomodoro'), findsOneWidget);
+
+    // Switch to Night
+    await tester.tap(find.byKey(const Key('period-chip-night')));
+    await tester.pumpAndSettle();
+    expect(find.text('Night Reflection & Wind-down'), findsOneWidget);
+    expect(find.byKey(const Key('night-reflection-input')), findsOneWidget);
+    expect(find.byKey(const Key('save-night-reflection-btn')), findsOneWidget);
+
+    // Enter reflection and save
+    await tester.enterText(find.byKey(const Key('night-reflection-input')), 'Shipped major improvements today!');
+    await tester.tap(find.byKey(const Key('save-night-reflection-btn')));
+    await tester.pumpAndSettle();
+  });
 }

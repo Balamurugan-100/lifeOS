@@ -26,6 +26,40 @@ class _RitualsScreenState extends ConsumerState<RitualsScreen> {
     ref.invalidate(summariesProvider);
   }
 
+  Future<void> _deleteRitual(String ritualId, String name) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Ritual?'),
+        content: Text('Are you sure you want to remove "$name"? All step logs will be cleared.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: NeonPalette.rose),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final repo = await ref.read(ritualsRepositoryProvider.future);
+      await repo.deleteRitual(ritualId);
+      ref.invalidate(ritualsDataProvider);
+      ref.invalidate(summariesProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('🗑️ Removed "$name"'),
+            backgroundColor: NeonPalette.rose,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
   void _showAddRitualDialog() {
     final nameCtrl = TextEditingController();
     final step1Ctrl = TextEditingController(text: 'Hydrate & Stretch');
@@ -54,6 +88,7 @@ class _RitualsScreenState extends ConsumerState<RitualsScreen> {
                 const Text('Create Custom Ritual', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 TextField(
+                  key: const Key('ritual-name-input'),
                   controller: nameCtrl,
                   decoration: const InputDecoration(labelText: 'Ritual Name', border: OutlineInputBorder()),
                 ),
@@ -81,6 +116,7 @@ class _RitualsScreenState extends ConsumerState<RitualsScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
+                    key: const Key('save-ritual-button'),
                     onPressed: () async {
                       final name = nameCtrl.text.trim();
                       if (name.isNotEmpty) {
@@ -120,6 +156,7 @@ class _RitualsScreenState extends ConsumerState<RitualsScreen> {
         title: const Text('🌅 Rituals & Routines', style: TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
+            key: const Key('add-ritual-button'),
             icon: const Icon(Icons.add_rounded),
             tooltip: 'Add Custom Ritual',
             onPressed: _showAddRitualDialog,
@@ -132,15 +169,37 @@ class _RitualsScreenState extends ConsumerState<RitualsScreen> {
         data: (rituals) {
           if (rituals.isEmpty) {
             return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.wb_sunny_outlined, size: 48, color: NeonPalette.amber),
-                  const SizedBox(height: 12),
-                  const Text('No rituals yet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  FilledButton(onPressed: _showAddRitualDialog, child: const Text('Create Morning Ritual')),
-                ],
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: NeonPalette.amber.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.wb_sunny_outlined, size: 48, color: NeonPalette.amber),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('No rituals configured yet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Design your personalized morning and evening routines without any mandatory defaults.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 13, color: isDark ? Colors.white60 : Colors.black54),
+                    ),
+                    const SizedBox(height: 20),
+                    FilledButton.icon(
+                      key: const Key('create-first-ritual-button'),
+                      icon: const Icon(Icons.add_rounded),
+                      onPressed: _showAddRitualDialog,
+                      label: const Text('Create New Ritual'),
+                      style: FilledButton.styleFrom(backgroundColor: NeonPalette.amber, foregroundColor: Colors.black),
+                    ),
+                  ],
+                ),
               ),
             );
           }
@@ -187,7 +246,7 @@ class _RitualsScreenState extends ConsumerState<RitualsScreen> {
         children: [
           // Header
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
             child: Row(
               children: [
                 Container(
@@ -224,6 +283,7 @@ class _RitualsScreenState extends ConsumerState<RitualsScreen> {
                 ),
                 if (ritual.isCompletedToday)
                   Container(
+                    margin: const EdgeInsets.only(right: 6),
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: NeonPalette.mint.withValues(alpha: 0.15),
@@ -238,6 +298,12 @@ class _RitualsScreenState extends ConsumerState<RitualsScreen> {
                       ],
                     ),
                   ),
+                IconButton(
+                  key: Key('delete-ritual-${ritual.id}'),
+                  icon: const Icon(Icons.delete_outline_rounded, size: 20, color: Colors.grey),
+                  tooltip: 'Delete Ritual',
+                  onPressed: () => _deleteRitual(ritual.id, ritual.name),
+                ),
               ],
             ),
           ),

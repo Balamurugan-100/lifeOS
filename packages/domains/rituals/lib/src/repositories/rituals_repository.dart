@@ -92,8 +92,6 @@ class RitualsRepository {
   }
 
   Future<List<Ritual>> getRituals() async {
-    await seedDefaultsIfEmpty();
-
     final today = _today();
     final ritualRows = await (_db.select(_db.ritualEntries)
           ..where((tbl) => tbl.isActive.equals(true))

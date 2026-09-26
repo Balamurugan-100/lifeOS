@@ -21,6 +21,8 @@ class WellnessRepository {
     return WellnessLog(
       id: r.id,
       date: r.date,
+      bedtime: r.bedtime,
+      wakeTime: r.wakeTime,
       sleepDurationMinutes: r.sleepDurationMinutes,
       sleepQualityScore: r.sleepQualityScore,
       energyScore: r.energyScore,
@@ -35,6 +37,8 @@ class WellnessRepository {
 
   Future<WellnessLog> logWellness({
     required String date,
+    String? bedtime,
+    String? wakeTime,
     int sleepDurationMinutes = 420,
     int sleepQualityScore = 4,
     int energyScore = 4,
@@ -49,6 +53,8 @@ class WellnessRepository {
     if (existing != null) {
       await (_db.update(_db.wellnessLogs)..where((tbl) => tbl.id.equals(existing.id))).write(
         WellnessLogsCompanion(
+          bedtime: Value(bedtime),
+          wakeTime: Value(wakeTime),
           sleepDurationMinutes: Value(sleepDurationMinutes),
           sleepQualityScore: Value(sleepQualityScore),
           energyScore: Value(energyScore),
@@ -62,6 +68,8 @@ class WellnessRepository {
       return WellnessLog(
         id: existing.id,
         date: date,
+        bedtime: bedtime,
+        wakeTime: wakeTime,
         sleepDurationMinutes: sleepDurationMinutes,
         sleepQualityScore: sleepQualityScore,
         energyScore: energyScore,
@@ -78,6 +86,8 @@ class WellnessRepository {
             WellnessLogsCompanion.insert(
               id: id,
               date: date,
+              bedtime: Value(bedtime),
+              wakeTime: Value(wakeTime),
               sleepDurationMinutes: Value(sleepDurationMinutes),
               sleepQualityScore: Value(sleepQualityScore),
               energyScore: Value(energyScore),
@@ -93,6 +103,8 @@ class WellnessRepository {
       return WellnessLog(
         id: id,
         date: date,
+        bedtime: bedtime,
+        wakeTime: wakeTime,
         sleepDurationMinutes: sleepDurationMinutes,
         sleepQualityScore: sleepQualityScore,
         energyScore: energyScore,

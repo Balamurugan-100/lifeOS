@@ -40,6 +40,10 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
   int _currentTabIndex = 0;
+  String? _simulatedPeriod;
+  final TextEditingController _reflectionCtrl = TextEditingController();
+  int _nightMoodScore = 4;
+  final Set<String> _completedMorningCues = <String>{};
 
   @override
   void didChangeDependencies() {
@@ -53,6 +57,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
   @override
   void dispose() {
     homeRouteObserver.unsubscribe(this);
+    _reflectionCtrl.dispose();
     super.dispose();
   }
 
@@ -60,6 +65,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
   @override
   void didPopNext() {
     ref.invalidate(summariesProvider);
+  }
+
+  String _getCurrentPeriod() {
+    if (_simulatedPeriod != null) return _simulatedPeriod!;
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'morning';
+    if (hour < 17) return 'afternoon';
+    return 'night';
   }
 
   Future<void> _openDomain(String key, String displayName) async {
@@ -96,9 +109,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
   }
 
   String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
+    final period = _getCurrentPeriod();
+    if (period == 'morning') return 'Good morning';
+    if (period == 'afternoon') return 'Good afternoon';
     return 'Good evening';
   }
 
@@ -129,6 +142,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('✨ Daily vibe logged!'),
+            backgroundColor: NeonPalette.mint,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _quickLogMoodAndReflection(int score, String reflection) async {
+    try {
+      final repo = await ref.read(journalRepositoryProvider.future);
+      final today = isoDate(todayLocal());
+      await repo.recordEntry(
+        id: 'journal_$today',
+        date: today,
+        moodScore: score,
+        reflection: reflection.isNotEmpty ? reflection : 'Evening reflection saved from LifeOS dashboard.',
+      );
+      _reflectionCtrl.clear();
+      await _refresh();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('📖 Daily reflection & mood saved!'),
             backgroundColor: NeonPalette.mint,
             duration: Duration(seconds: 2),
           ),
@@ -359,10 +396,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
               // 2. Apple Health-Style Concentric Activity Rings & Day Momentum Hero
               _buildActivityRingsHero(summaries, isDark),
 
-              // 3. 2-Column Bento Grid Interactive Widgets (Clean, Self-Contained)
+              // 3. Dynamic Time-of-Day Context (Morning Routines / Midday Focus / Night Reflection)
+              _buildDynamicContextHero(summaries, isDark),
+
+              // 4. 2-Column Bento Grid Interactive Widgets (Clean, Self-Contained)
               _buildBentoGrid(summaries, isDark),
 
-              // 4. Quick Action Launchers Bar
+              // 5. Quick Action Launchers Bar
               _buildQuickActionLauncher(isDark),
             ],
           ),
@@ -530,6 +570,381 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
           style: TextStyle(fontSize: 10.5, color: color, fontWeight: FontWeight.w600),
         ),
       ],
+    );
+  }
+
+  Widget _buildDynamicContextHero(List<DomainSummary> summaries, bool isDark) {
+    final period = _getCurrentPeriod();
+
+    return Container(
+      key: const Key('dynamic-context-card'),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF111827) : Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: period == 'morning'
+              ? NeonPalette.amber.withValues(alpha: 0.35)
+              : (period == 'afternoon'
+                  ? NeonPalette.cyan.withValues(alpha: 0.35)
+                  : NeonPalette.violet.withValues(alpha: 0.35)),
+          width: 1.5,
+        ),
+        boxShadow: [
+          if (isDark)
+            BoxShadow(
+              color: (period == 'morning'
+                      ? NeonPalette.amber
+                      : (period == 'afternoon' ? NeonPalette.cyan : NeonPalette.violet))
+                  .withValues(alpha: 0.08),
+              blurRadius: 18,
+              offset: const Offset(0, 4),
+            ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header Row with Time-of-Day Switcher
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      period == 'morning'
+                          ? Icons.wb_sunny_rounded
+                          : (period == 'afternoon'
+                              ? Icons.bolt_rounded
+                              : Icons.nightlight_round),
+                      size: 20,
+                      color: period == 'morning'
+                          ? NeonPalette.amber
+                          : (period == 'afternoon' ? NeonPalette.cyan : NeonPalette.violet),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      period == 'morning'
+                          ? 'Morning Launchpad'
+                          : (period == 'afternoon'
+                              ? 'Afternoon Execution'
+                              : 'Night Reflection & Wind-down'),
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+                // Compact Period Switcher Pill
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1F2937) : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildPeriodChip('morning', '🌅', period),
+                      _buildPeriodChip('afternoon', '⚡', period),
+                      _buildPeriodChip('night', '🌙', period),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Context Body
+            if (period == 'morning')
+              _buildMorningContext(isDark)
+            else if (period == 'afternoon')
+              _buildAfternoonContext(isDark)
+            else
+              _buildNightContext(isDark),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPeriodChip(String pKey, String label, String currentPeriod) {
+    final isSelected = currentPeriod == pKey;
+    return InkWell(
+      key: Key('period-chip-$pKey'),
+      onTap: () => setState(() => _simulatedPeriod = pKey),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? (pKey == 'morning'
+                  ? NeonPalette.amber.withValues(alpha: 0.25)
+                  : (pKey == 'afternoon'
+                      ? NeonPalette.cyan.withValues(alpha: 0.25)
+                      : NeonPalette.violet.withValues(alpha: 0.25)))
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMorningContext(bool isDark) {
+    final cues = [
+      ('hydrate', '💧 Hydrate (500ml) & Quick Stretch', 'Kickstart metabolism and circulation'),
+      ('priorities', '🎯 Top 3 Priority Task Focus', 'Align today\'s high-impact outputs'),
+      ('mindfulness', '🧘 5m Morning Grounding', 'Set intentional focus before screens'),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Awaken your focus and conquer the day\'s first milestones.',
+          style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54),
+        ),
+        const SizedBox(height: 10),
+        ...cues.map((cue) {
+          final isChecked = _completedMorningCues.contains(cue.$1);
+          return Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : Colors.amber.shade50.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isChecked
+                    ? NeonPalette.mint.withValues(alpha: 0.4)
+                    : (isDark ? Colors.white10 : Colors.grey.shade200),
+              ),
+            ),
+            child: Row(
+              children: [
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      if (isChecked) {
+                        _completedMorningCues.remove(cue.$1);
+                      } else {
+                        _completedMorningCues.add(cue.$1);
+                      }
+                    });
+                  },
+                  child: Icon(
+                    isChecked ? Icons.check_circle_rounded : Icons.circle_outlined,
+                    size: 18,
+                    color: isChecked ? NeonPalette.mint : NeonPalette.amber,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        cue.$2,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.bold,
+                          decoration: isChecked ? TextDecoration.lineThrough : null,
+                          color: isChecked ? Colors.grey : (isDark ? Colors.white : Colors.black87),
+                        ),
+                      ),
+                      Text(
+                        cue.$3,
+                        style: const TextStyle(fontSize: 10, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.wb_sunny_rounded, size: 14, color: NeonPalette.amber),
+                label: const Text('Rituals & Routines', style: TextStyle(fontSize: 12, color: NeonPalette.amber)),
+                onPressed: () => _openDomain('rituals', 'Rituals'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: FilledButton.icon(
+                icon: const Icon(Icons.timer_outlined, size: 14),
+                label: const Text('Start Focus', style: TextStyle(fontSize: 12)),
+                style: FilledButton.styleFrom(backgroundColor: NeonPalette.amber, foregroundColor: Colors.black),
+                onPressed: () => _openDomain('focus', 'Focus'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAfternoonContext(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Peak execution window. Eliminate distractions and sprint on priorities.',
+          style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B) : Colors.cyan.shade50.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: NeonPalette.cyan.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: NeonPalette.cyan.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.bolt, color: NeonPalette.cyan, size: 20),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('25-Minute Deep Focus Sprint', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    Text('Single-task on your top priority task without context-switching.', style: TextStyle(fontSize: 10.5, color: Colors.grey)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: FilledButton.icon(
+                icon: const Icon(Icons.play_arrow_rounded, size: 16),
+                label: const Text('Launch Pomodoro', style: TextStyle(fontSize: 12)),
+                style: FilledButton.styleFrom(backgroundColor: NeonPalette.cyan, foregroundColor: Colors.black),
+                onPressed: () => _openDomain('focus', 'Focus'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.checklist_rounded, size: 14, color: NeonPalette.cyan),
+                label: const Text('Priority Tasks', style: TextStyle(fontSize: 12, color: NeonPalette.cyan)),
+                onPressed: () => setState(() => _currentTabIndex = 1),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNightContext(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Close open loops, capture daily gratitude, and log your evening reflection.',
+          style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54),
+        ),
+        const SizedBox(height: 12),
+
+        // Mood Score Selector
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Day\'s Vibe / Mood:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            Row(
+              children: [
+                _buildNightMoodButton(1, '😔'),
+                _buildNightMoodButton(2, '🥱'),
+                _buildNightMoodButton(3, '⚖️'),
+                _buildNightMoodButton(4, '😊'),
+                _buildNightMoodButton(5, '🔥'),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        // Quick Reflection Input
+        TextField(
+          key: const Key('night-reflection-input'),
+          controller: _reflectionCtrl,
+          decoration: InputDecoration(
+            hintText: 'What went well today? What did you learn?',
+            hintStyle: const TextStyle(fontSize: 12),
+            filled: true,
+            fillColor: isDark ? const Color(0xFF1E293B) : Colors.grey.shade100,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+          ),
+          style: const TextStyle(fontSize: 12.5),
+          maxLines: 2,
+        ),
+        const SizedBox(height: 10),
+
+        Row(
+          children: [
+            Expanded(
+              child: FilledButton.icon(
+                key: const Key('save-night-reflection-btn'),
+                icon: const Icon(Icons.check_circle_rounded, size: 15),
+                label: const Text('Save Reflection', style: TextStyle(fontSize: 12)),
+                style: FilledButton.styleFrom(backgroundColor: NeonPalette.violet, foregroundColor: Colors.white),
+                onPressed: () => _quickLogMoodAndReflection(_nightMoodScore, _reflectionCtrl.text),
+              ),
+            ),
+            const SizedBox(width: 8),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.bedtime_rounded, size: 14, color: NeonPalette.violet),
+              label: const Text('Sleep Vitals', style: TextStyle(fontSize: 12, color: NeonPalette.violet)),
+              onPressed: () => _openDomain('wellness', 'Wellness'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNightMoodButton(int score, String emoji) {
+    final isSelected = _nightMoodScore == score;
+    return InkWell(
+      onTap: () => setState(() => _nightMoodScore = score),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? NeonPalette.violet.withValues(alpha: 0.3) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: isSelected ? NeonPalette.violet : Colors.transparent),
+        ),
+        child: Text(emoji, style: const TextStyle(fontSize: 16)),
+      ),
     );
   }
 

@@ -29,7 +29,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('🔋 Sleep & Energy Tracker'), findsOneWidget);
-    expect(find.text('🌙 Sleep Duration'), findsOneWidget);
+    expect(find.text('🌙 Sleep & Wake-up Schedule'), findsOneWidget);
+    expect(find.text('Bedtime'), findsOneWidget);
+    expect(find.text('Wake-up'), findsOneWidget);
     expect(find.text('⚡ Morning Energy Level'), findsOneWidget);
 
     // Save vitals
