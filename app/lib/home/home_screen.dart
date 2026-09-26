@@ -183,8 +183,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
             MediaQuery.of(context).platformBrightness == Brightness.dark);
 
     return Scaffold(
+        drawer: _buildDrawer(context, ref),
       appBar: _currentTabIndex == 0
           ? AppBar(
+              leading: IconButton(
+                key: const Key('openDrawer'),
+                icon: const Icon(Icons.menu),
+                onPressed: () => Scaffold.of(context).openDrawer(),
+              ),
               title: Row(
                 children: [
                   Container(
@@ -264,11 +270,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
         backgroundColor: isDark ? const Color(0xFF0B1120) : Colors.white,
         indicatorColor: NeonPalette.cyan.withValues(alpha: 0.2),
         destinations: const [
+          // Overview
           NavigationDestination(
             icon: Icon(Icons.dashboard_outlined),
             selectedIcon: Icon(Icons.dashboard_rounded, color: NeonPalette.cyan),
             label: 'Today',
           ),
+          // Core domains
           NavigationDestination(
             icon: Icon(Icons.checklist_outlined),
             selectedIcon: Icon(Icons.checklist_rounded, color: NeonPalette.cyan),
@@ -284,6 +292,48 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
             selectedIcon: Icon(Icons.account_balance_wallet_rounded, color: NeonPalette.violet),
             label: 'Finance',
           ),
+          // Additional domains
+          NavigationDestination(
+            icon: Icon(Icons.flag_rounded),
+            selectedIcon: Icon(Icons.flag_rounded, color: NeonPalette.blue),
+            label: 'Goals',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.edit_note_rounded),
+            selectedIcon: Icon(Icons.edit_note_rounded, color: NeonPalette.amber),
+            label: 'Journal',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.description_outlined),
+            selectedIcon: Icon(Icons.description_outlined, color: Color(0xFF38BDF8)),
+            label: 'Notes',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.timer_outlined),
+            selectedIcon: Icon(Icons.timer_outlined, color: NeonPalette.rose),
+            label: 'Focus',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.wb_sunny_rounded),
+            selectedIcon: Icon(Icons.wb_sunny_rounded, color: NeonPalette.amber),
+            label: 'Rituals',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.calendar_today_rounded),
+            selectedIcon: Icon(Icons.calendar_today_rounded, color: NeonPalette.cyan),
+            label: 'Planner',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.battery_charging_full_rounded),
+            selectedIcon: Icon(Icons.battery_charging_full_rounded, color: NeonPalette.mint),
+            label: 'Wellness',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.rate_review_rounded),
+            selectedIcon: Icon(Icons.rate_review_rounded, color: NeonPalette.violet),
+            label: 'Review',
+          ),
+          // Hub as catch‑all
           NavigationDestination(
             icon: Icon(Icons.apps_outlined),
             selectedIcon: Icon(Icons.apps_rounded, color: NeonPalette.amber),
@@ -296,13 +346,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with RouteAware {
   }
 
   Widget _buildCurrentTabBody(AsyncValue<List<DomainSummary>> summariesAsync, bool isDark) {
+  // Existing implementation remains unchanged.
+
     if (_currentTabIndex == 1) {
       return const TaskScreen();
     } else if (_currentTabIndex == 2) {
-      return const HabitScreen();
-    } else if (_currentTabIndex == 3) {
-      return const FinanceScreen();
-    } else if (_currentTabIndex == 4) {
       return const HubScreen();
     }
 

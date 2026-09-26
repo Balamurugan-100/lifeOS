@@ -25,6 +25,7 @@ class TaskRepository {
     TaskPriority priority = TaskPriority.medium,
     String? notes,
     String? category,
+    TaskRepeat repeat = TaskRepeat.none,
   }) async {
     final normalized = normalizeTaskTitle(title);
     final trimmedNotes = notes?.trim().isEmpty == true ? null : notes?.trim();
@@ -47,6 +48,7 @@ class TaskRepository {
             priority: Value(priority.name),
             notes: Value(trimmedNotes),
             category: Value(trimmedCategory),
+            repeatInterval: Value(repeat.name),
             createdAt: now,
             updatedAt: now,
           ),
@@ -59,6 +61,7 @@ class TaskRepository {
       dueDate: _normalizeDueDate(dueDate),
       position: position,
       priority: priority,
+      repeat: repeat,
       notes: trimmedNotes,
       category: trimmedCategory,
       createdAt: now,
@@ -67,7 +70,8 @@ class TaskRepository {
   }
 
   Future<Task?> byId(String id) async {
-    final row = await (_db.select(_db.tasks)..where((t) => t.id.equals(id)))
+    final row = await (_db.select(_db.tasks)
+          ..where((t) => t.id.equals(id) & t.deletedAt.isNull()))
         .getSingleOrNull();
     return row == null ? null : _toTask(row);
   }
@@ -104,6 +108,7 @@ class TaskRepository {
     bool clearNotes = false,
     String? category,
     bool clearCategory = false,
+    TaskRepeat? repeat,
   }) async {
     final companion = TasksCompanion(
       title: title != null ? Value(normalizeTaskTitle(title)) : const Value.absent(),
@@ -114,6 +119,7 @@ class TaskRepository {
       notes: clearNotes
           ? const Value(null)
           : (notes != null ? Value(notes.trim().isEmpty ? null : notes.trim()) : const Value.absent()),
+      repeatInterval: repeat != null ? Value(repeat.name) : const Value.absent(),
       category: clearCategory
           ? const Value(null)
           : (category != null ? Value(category.trim().isEmpty ? null : category.trim()) : const Value.absent()),
@@ -125,9 +131,40 @@ class TaskRepository {
 
   /// Sets the status, refreshing `updated_at`. Idempotent: writing the status
   /// the row already has is a no-op (no timestamp change).
+    Future<void> _handleRepeat(Task current, TaskStatus newStatus) async {
+    if (current.status == TaskStatus.completed) return;
+    if (newStatus != TaskStatus.completed) return;
+    if (current.repeat == TaskRepeat.none) return;
+
+    DateTime nextDue;
+    if (current.dueDate == null) {
+      nextDue = calendarDate(utcNow()).add(const Duration(days: 1));
+    } else {
+      switch (current.repeat) {
+        case TaskRepeat.daily:
+          nextDue = current.dueDate!.add(const Duration(days: 1));
+          break;
+        case TaskRepeat.weekly:
+          nextDue = current.dueDate!.add(const Duration(days: 7));
+          break;
+        default:
+          nextDue = calendarDate(utcNow()).add(const Duration(days: 1));
+      }
+    }
+    await add(
+      current.title,
+      dueDate: nextDue,
+      priority: current.priority,
+      notes: current.notes,
+      category: current.category,
+      repeat: current.repeat,
+    );
+  }
+
   Future<void> setStatus(String id, TaskStatus status) async {
     final current = await byId(id);
     if (current == null || current.status == status) return;
+    await _handleRepeat(current, status);
     await (_db.update(_db.tasks)..where((t) => t.id.equals(id))).write(
           TasksCompanion(
             status: Value(status.name),
@@ -144,6 +181,7 @@ class TaskRepository {
     final next = current.isCompleted
         ? TaskStatus.outstanding
         : TaskStatus.completed;
+    await _handleRepeat(current, next);
     await (_db.update(_db.tasks)..where((t) => t.id.equals(id))).write(
           TasksCompanion(
             status: Value(next.name),
@@ -154,7 +192,12 @@ class TaskRepository {
   }
 
   Future<void> delete(String id) async {
-    await (_db.delete(_db.tasks)..where((t) => t.id.equals(id))).go();
+    await (_db.update(_db.tasks)..where((t) => t.id.equals(id))).write(
+          TasksCompanion(
+            deletedAt: Value(utcNow()),
+            updatedAt: Value(await _nextUpdatedAt(id)),
+          ),
+        );
   }
 
   /// Rewrites positions 0..n-1 following [ids], skipping ids that are not in
@@ -180,6 +223,7 @@ class TaskRepository {
   /// All tasks sorted by position asc (created_at as tie-break).
   Future<List<Task>> all() async {
     final rows = await (_db.select(_db.tasks)
+          ..where((t) => t.deletedAt.isNull())
           ..orderBy([
             (t) => OrderingTerm.asc(t.position),
             (t) => OrderingTerm.asc(t.createdAt),
@@ -190,9 +234,13 @@ class TaskRepository {
 
   Task _toTask(dynamic row) {
     TaskPriority priority = TaskPriority.medium;
+    TaskRepeat repeat = TaskRepeat.none;
     try {
       if (row.priority != null) {
         priority = TaskPriority.values.byName(row.priority as String);
+      }
+      if (row.repeatInterval != null) {
+        repeat = TaskRepeat.fromString(row.repeatInterval as String);
       }
     } catch (_) {}
 
@@ -203,10 +251,12 @@ class TaskRepository {
       dueDate: row.dueDate as DateTime?,
       position: row.position as int,
       priority: priority,
+      repeat: repeat,
       notes: row.notes as String?,
       category: row.category as String?,
       createdAt: (row.createdAt as DateTime).toUtc(),
       updatedAt: (row.updatedAt as DateTime).toUtc(),
+      deletedAt: row.deletedAt != null ? (row.deletedAt as DateTime).toUtc() : null,
     );
   }
 

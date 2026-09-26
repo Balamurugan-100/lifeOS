@@ -19,6 +19,7 @@ class HabitRepository {
   /// All habits in registration order (`created_at` asc, tie-broken by id).
   Future<List<Habit>> all() async {
     final rows = await (_db.select(_db.habits)
+          ..where((t) => t.deletedAt.isNull())
           ..orderBy([
             (t) => OrderingTerm.asc(t.createdAt),
             (t) => OrderingTerm.asc(t.id),
@@ -28,7 +29,8 @@ class HabitRepository {
   }
 
   Future<Habit?> byId(String id) async {
-    final row = await (_db.select(_db.habits)..where((t) => t.id.equals(id)))
+    final row = await (_db.select(_db.habits)
+          ..where((t) => t.id.equals(id) & t.deletedAt.isNull()))
         .getSingleOrNull();
     return row == null ? null : _toHabit(row);
   }
@@ -71,13 +73,14 @@ class HabitRepository {
         );
   }
 
-  /// Deletes the habit and every one of its entries.
+  /// Soft-deletes the habit (tombstone for future sync).
   Future<void> delete(String id) async {
-    await _db.transaction(() async {
-      await (_db.delete(_db.habitEntries)..where((t) => t.habitId.equals(id)))
-          .go();
-      await (_db.delete(_db.habits)..where((t) => t.id.equals(id))).go();
-    });
+    await (_db.update(_db.habits)..where((t) => t.id.equals(id))).write(
+          HabitsCompanion(
+            deletedAt: Value(utcNow()),
+            updatedAt: Value(utcNow()),
+          ),
+        );
   }
 
   /// True when [date] has a recorded entry for the habit.
@@ -149,6 +152,7 @@ class HabitRepository {
         ),
         createdAt: (row.createdAt as DateTime).toUtc(),
         updatedAt: (row.updatedAt as DateTime).toUtc(),
+        deletedAt: row.deletedAt != null ? (row.deletedAt as DateTime).toUtc() : null,
       );
 
   /// 'daily' | 'weekly' + weekdays csv -> domain [HabitSchedule].

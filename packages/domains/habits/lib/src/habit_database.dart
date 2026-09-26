@@ -11,13 +11,38 @@ class HabitDatabase extends _$HabitDatabase {
   HabitDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async => m.createAll(),
-        beforeOpen: (details) async {},
+        onUpgrade: (m, from, to) async {
+          await m.createAll();
+          await _ensureColumnsExist();
+        },
+        beforeOpen: (details) async {
+          await _ensureColumnsExist();
+        },
       );
 
-  Future<void> ensureTables() async => Migrator(this).createAll();
+  Future<void> ensureTables() async {
+    await Migrator(this).createAll();
+    await _ensureColumnsExist();
+  }
+
+  Future<void> _ensureColumnsExist() async {
+    final existingColumns = <String>{};
+    try {
+      final rows = await customSelect('PRAGMA table_info(habits)').get();
+      for (final row in rows) {
+        existingColumns.add(row.read<String>('name'));
+      }
+    } catch (_) {}
+
+    if (!existingColumns.contains('deleted_at')) {
+      try {
+        await customStatement("ALTER TABLE habits ADD COLUMN deleted_at INTEGER;");
+      } catch (_) {}
+    }
+  }
 }

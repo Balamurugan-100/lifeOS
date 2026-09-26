@@ -12,12 +12,16 @@ class TaskDatabase extends _$TaskDatabase {
   TaskDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   /// Drift's default keeps `created_at`/`updated_at` for the AuditFields mixin.
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          await m.createAll();
+          await _ensureColumnsExist();
+        },
         beforeOpen: (details) async {
           await _ensureColumnsExist();
         },
@@ -51,6 +55,17 @@ class TaskDatabase extends _$TaskDatabase {
     if (!existingColumns.contains('category')) {
       try {
         await customStatement("ALTER TABLE tasks ADD COLUMN category TEXT;");
+      } catch (_) {}
+    }
+    if (!existingColumns.contains('repeat_interval')) {
+      try {
+        await customStatement(
+            "ALTER TABLE tasks ADD COLUMN repeat_interval TEXT DEFAULT 'none';");
+      } catch (_) {}
+    }
+    if (!existingColumns.contains('deleted_at')) {
+      try {
+        await customStatement("ALTER TABLE tasks ADD COLUMN deleted_at INTEGER;");
       } catch (_) {}
     }
   }

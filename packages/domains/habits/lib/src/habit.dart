@@ -101,6 +101,7 @@ class Habit {
     required this.schedule,
     required this.createdAt,
     required this.updatedAt,
+    this.deletedAt,
   }) : name = normalizeHabitName(name);
 
   /// Stable UUID id.
@@ -118,6 +119,9 @@ class Habit {
   /// Last write instant, UTC.
   final DateTime updatedAt;
 
+  /// Deletion instant, UTC (null if active).
+  final DateTime? deletedAt;
+
   @override
   bool operator ==(Object other) =>
       other is Habit &&
@@ -125,10 +129,11 @@ class Habit {
       other.name == name &&
       other.schedule == schedule &&
       other.createdAt == createdAt &&
-      other.updatedAt == updatedAt;
+      other.updatedAt == updatedAt &&
+      other.deletedAt == deletedAt;
 
   @override
-  int get hashCode => Object.hash(id, name, schedule, createdAt, updatedAt);
+  int get hashCode => Object.hash(id, name, schedule, createdAt, updatedAt, deletedAt);
 
   @override
   String toString() => 'Habit($name: $schedule)';

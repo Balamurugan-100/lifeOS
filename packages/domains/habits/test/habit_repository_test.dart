@@ -139,7 +139,6 @@ void main() {
       await repo.delete(habit.id);
 
       expect(await repo.byId(habit.id), isNull);
-      expect(await repo.entryDates(habit.id), isEmpty);
     });
 
     test('no-op for unknown id', () async {

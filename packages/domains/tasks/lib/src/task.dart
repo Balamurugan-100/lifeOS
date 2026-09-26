@@ -49,6 +49,30 @@ enum TaskPriority {
       };
 }
 
+
+/// Task recurrence: none, daily, or weekly. When a recurring task is
+/// completed, the repository spawns the next occurrence (due date advanced
+/// by the interval; undated recurring tasks respawn due tomorrow).
+enum TaskRepeat {
+  none,
+  daily,
+  weekly;
+
+  String get label => switch (this) {
+        TaskRepeat.none => 'Never',
+        TaskRepeat.daily => 'Daily',
+        TaskRepeat.weekly => 'Weekly',
+      };
+
+  static TaskRepeat fromString(String value) {
+    return switch (value) {
+      'daily' => TaskRepeat.daily,
+      'weekly' => TaskRepeat.weekly,
+      _ => TaskRepeat.none,
+    };
+  }
+}
+
 /// An immutable task (data-model.md: Task entity).
 class Task {
   Task({
@@ -59,9 +83,11 @@ class Task {
     required this.position,
     required this.createdAt,
     required this.updatedAt,
+    this.deletedAt,
     this.priority = TaskPriority.medium,
     this.notes,
     this.category,
+    this.repeat = TaskRepeat.none,
   }) : title = normalizeTaskTitle(title) {
     if (position < 0) {
       throw ArgumentError.value(position, 'position', 'must not be negative');
@@ -94,11 +120,17 @@ class Task {
   /// Optional category/tag (e.g., Work, Personal, Health, Finance).
   final String? category;
 
+  /// Recurrence rule; none by default.
+  final TaskRepeat repeat;
+
   /// Creation instant, UTC.
   final DateTime createdAt;
 
   /// Last write instant, UTC.
   final DateTime updatedAt;
+
+  /// Deletion instant, UTC (null if active).
+  final DateTime? deletedAt;
 
   /// True when the task is completed (status-derived).
   bool get isCompleted => status == TaskStatus.completed;
@@ -126,8 +158,11 @@ class Task {
     bool clearNotes = false,
     String? category,
     bool clearCategory = false,
+    TaskRepeat? repeat,
     DateTime? createdAt,
     DateTime? updatedAt,
+    DateTime? deletedAt,
+    bool clearDeletedAt = false,
   }) {
     return Task(
       id: id ?? this.id,
@@ -138,8 +173,10 @@ class Task {
       priority: priority ?? this.priority,
       notes: clearNotes ? null : (notes ?? this.notes),
       category: clearCategory ? null : (category ?? this.category),
+      repeat: repeat ?? this.repeat,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: clearDeletedAt ? null : (deletedAt ?? this.deletedAt),
     );
   }
 
@@ -154,8 +191,10 @@ class Task {
       other.priority == priority &&
       other.notes == notes &&
       other.category == category &&
+      other.repeat == repeat &&
       other.createdAt == createdAt &&
-      other.updatedAt == updatedAt;
+      other.updatedAt == updatedAt &&
+      other.deletedAt == deletedAt;
 
   @override
   int get hashCode => Object.hash(
@@ -167,8 +206,10 @@ class Task {
         priority,
         notes,
         category,
+        repeat,
         createdAt,
         updatedAt,
+        deletedAt,
       );
 
   @override

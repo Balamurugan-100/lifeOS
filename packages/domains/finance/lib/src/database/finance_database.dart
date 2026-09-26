@@ -21,7 +21,7 @@ class FinanceDatabase extends _$FinanceDatabase {
   FinanceDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -29,12 +29,38 @@ class FinanceDatabase extends _$FinanceDatabase {
           await m.createAll();
           await _seedCategories();
         },
-        beforeOpen: (details) async {},
+        onUpgrade: (m, from, to) async {
+          await m.createAll();
+          await _ensureColumnsExist();
+          await _seedCategories();
+        },
+        beforeOpen: (details) async {
+          await _ensureColumnsExist();
+        },
       );
 
   Future<void> ensureTables() async {
     await Migrator(this).createAll();
+    await _ensureColumnsExist();
     await _seedCategories();
+  }
+
+  Future<void> _ensureColumnsExist() async {
+    for (final table in ['accounts', 'finance_transactions', 'category_budgets']) {
+      final existingColumns = <String>{};
+      try {
+        final rows = await customSelect('PRAGMA table_info($table)').get();
+        for (final row in rows) {
+          existingColumns.add(row.read<String>('name'));
+        }
+      } catch (_) {}
+
+      if (!existingColumns.contains('deleted_at')) {
+        try {
+          await customStatement("ALTER TABLE $table ADD COLUMN deleted_at INTEGER;");
+        } catch (_) {}
+      }
+    }
   }
 
   Future<void> _seedCategories() async {

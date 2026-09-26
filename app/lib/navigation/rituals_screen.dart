@@ -19,6 +19,22 @@ class RitualsScreen extends ConsumerStatefulWidget {
 }
 
 class _RitualsScreenState extends ConsumerState<RitualsScreen> {
+  Future<void> _loadTemplates() async {
+    final repo = await ref.read(ritualsRepositoryProvider.future);
+    await repo.seedDefaultsIfEmpty();
+    ref.invalidate(ritualsDataProvider);
+    ref.invalidate(summariesProvider);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✨ Standard templates loaded'),
+          backgroundColor: NeonPalette.mint,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   Future<void> _toggleStep(String ritualId, String stepId) async {
     final repo = await ref.read(ritualsRepositoryProvider.future);
     await repo.toggleStepCompletion(ritualId, stepId);
@@ -197,6 +213,14 @@ class _RitualsScreenState extends ConsumerState<RitualsScreen> {
                       onPressed: _showAddRitualDialog,
                       label: const Text('Create New Ritual'),
                       style: FilledButton.styleFrom(backgroundColor: NeonPalette.amber, foregroundColor: Colors.black),
+                    ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      key: const Key('load-templates-button'),
+                      icon: const Icon(Icons.auto_awesome_rounded),
+                      onPressed: _loadTemplates,
+                      label: const Text('Use Standard Templates'),
+                      style: OutlinedButton.styleFrom(foregroundColor: NeonPalette.amber, side: const BorderSide(color: NeonPalette.amber)),
                     ),
                   ],
                 ),

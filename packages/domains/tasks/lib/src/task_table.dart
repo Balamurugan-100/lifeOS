@@ -30,6 +30,10 @@ class Tasks extends Table with AuditFields {
   /// Optional category/tag (e.g. 'Work', 'Personal').
   TextColumn get category => text().nullable().named('category')();
 
+  /// 'none' | 'daily' | 'weekly' — auto-respawn behavior on completion.
+  TextColumn get repeatInterval =>
+      text().withDefault(const Constant('none')).named('repeat_interval')();
+
   @override
   Set<Column> get primaryKey => {id};
 }
